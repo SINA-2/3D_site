@@ -1,0 +1,4867 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>میسون ابسیدین — مبلمان معماری و دکوراسیون لوکس</title>
+  <meta name="description" content="میسون ابسیدین — تولیدکننده مبلمان لوکس و مجسمه‌گون در نسخه‌های محدود دست‌ساز. گالری شبانه اختصاصی، شخصی‌سازی سه‌بعدی و استعلام قیمت آنلاین." />
+
+  <!-- Typography: Playfair Display + Inter with system fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Three.js r128 from cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* =========================================================================
+       DESIGN TOKENS & RESET
+       ========================================================================= */
+    :root {
+      --bg: #0b0b0d;
+      --bg-elevated: #131317;
+      --gold: #c9a46a;
+      --gold-soft: rgba(201, 164, 106, 0.28);
+      --gold-dim: rgba(201, 164, 106, 0.12);
+      --text: #f2efe9;
+      --text-muted: #9a968f;
+      --border: rgba(242, 239, 233, 0.11);
+      --border-strong: rgba(201, 164, 106, 0.36);
+      --glass-bg: rgba(14, 14, 18, 0.66);
+      --glass-blur: blur(22px);
+      --font-serif: "Vazirmatn", "Playfair Display", Georgia, "Times New Roman", serif;
+      --font-sans: "Vazirmatn", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --nav-height: 76px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      scroll-behavior: auto;
+      overflow-x: hidden;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      selection-background-color: var(--gold);
+    }
+
+    ::selection {
+      background: rgba(201, 164, 106, 0.32);
+      color: var(--text);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button, input, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    button {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* =========================================================================
+       FIXED STAGE, VIGNETTE & FILM GRAIN
+       ========================================================================= */
+    #webgl-stage {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: radial-gradient(circle at 50% 42%, #17161a 0%, #0b0b0d 66%, #070709 100%);
+      overflow: hidden;
+    }
+
+    #webgl-stage canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #orbit-surface {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      cursor: grab;
+      touch-action: pan-y;
+    }
+
+    #orbit-surface.active {
+      pointer-events: auto;
+    }
+
+    #orbit-surface.dragging {
+      cursor: grabbing;
+    }
+
+    .vignette-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(
+        ellipse 82% 76% at 50% 48%,
+        rgba(11, 11, 13, 0) 42%,
+        rgba(7, 7, 9, 0.56) 84%,
+        rgba(5, 5, 7, 0.88) 100%
+      );
+    }
+
+    #grain-overlay {
+      position: fixed;
+      inset: -10%;
+      width: 120%;
+      height: 120%;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0.042;
+      mix-blend-mode: overlay;
+      background-repeat: repeat;
+      background-size: 160px 160px;
+      will-change: transform;
+    }
+
+    /* =========================================================================
+       LOADING SCREEN
+       ========================================================================= */
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: #08080a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      transition: opacity 0.9s var(--ease-out), visibility 0.9s var(--ease-out);
+    }
+
+    #loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader-brand {
+      font-family: var(--font-serif);
+      font-size: clamp(1.25rem, 2.6vw, 1.85rem);
+      letter-spacing: 0.42em;
+      text-indent: 0.42em;
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    .loader-sub {
+      font-size: 0.68rem;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: -16px;
+    }
+
+    .loader-track {
+      width: min(260px, 66vw);
+      height: 1px;
+      background: rgba(242, 239, 233, 0.14);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loader-bar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(201, 164, 106, 0.4), var(--gold), #f3dfc1);
+      box-shadow: 0 0 14px rgba(201, 164, 106, 0.55);
+      transition: width 0.25s ease-out;
+    }
+
+    .loader-percent {
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =========================================================================
+       CUSTOM CURSOR (DESKTOP POINTER ONLY)
+       ========================================================================= */
+    .cursor-dot,
+    .cursor-ring {
+      display: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      body.custom-cursor-ready {
+        cursor: none;
+      }
+
+      body.custom-cursor-ready a,
+      body.custom-cursor-ready button,
+      body.custom-cursor-ready input,
+      body.custom-cursor-ready textarea,
+      body.custom-cursor-ready [role="button"] {
+        cursor: none;
+      }
+
+      .cursor-dot,
+      .cursor-ring {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 2000;
+        border-radius: 50%;
+        transform: translate3d(-100px, -100px, 0);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      body.custom-cursor-ready .cursor-dot,
+      body.custom-cursor-ready .cursor-ring {
+        opacity: 1;
+      }
+
+      .cursor-dot {
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;
+        background: var(--gold);
+        box-shadow: 0 0 10px rgba(201, 164, 106, 0.7);
+      }
+
+      .cursor-ring {
+        width: 34px;
+        height: 34px;
+        margin: -17px 0 0 -17px;
+        border: 1px solid rgba(201, 164, 106, 0.55);
+        transition:
+          width 0.32s var(--ease-out),
+          height 0.32s var(--ease-out),
+          margin 0.32s var(--ease-out),
+          border-color 0.25s ease,
+          background-color 0.25s ease,
+          opacity 0.3s ease;
+      }
+
+      body.cursor-hover .cursor-ring {
+        width: 52px;
+        height: 52px;
+        margin: -26px 0 0 -26px;
+        border-color: var(--gold);
+        background-color: rgba(201, 164, 106, 0.08);
+      }
+
+      body.cursor-drag .cursor-ring {
+        width: 44px;
+        height: 44px;
+        margin: -22px 0 0 -22px;
+        border-style: dashed;
+        border-color: var(--gold);
+      }
+    }
+
+    /* =========================================================================
+       FIXED TOP NAVIGATION
+       ========================================================================= */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--nav-height);
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 4vw, 56px);
+      background: linear-gradient(180deg, rgba(11, 11, 13, 0.76) 0%, rgba(11, 11, 13, 0) 100%);
+      transition: background 0.4s ease, backdrop-filter 0.4s ease;
+    }
+
+    .top-nav.scrolled {
+      background: rgba(11, 11, 13, 0.62);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(242, 239, 233, 0.06);
+    }
+
+    .nav-logo {
+      font-family: var(--font-serif);
+      font-size: clamp(0.88rem, 1.35vw, 1.05rem);
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      color: var(--text);
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.3s ease;
+    }
+
+    .nav-logo:hover {
+      color: var(--gold);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 2.8vw, 38px);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: clamp(18px, 2.4vw, 34px);
+      list-style: none;
+    }
+
+    .nav-link {
+      position: relative;
+      font-size: 0.74rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 6px 0;
+      transition: color 0.3s ease;
+    }
+
+    .nav-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 1px;
+      background: var(--gold);
+      transform: scaleX(0);
+      transform-origin: right center;
+      transition: transform 0.4s var(--ease-out);
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: var(--text);
+    }
+
+    .nav-link:hover::after,
+    .nav-link.active::after {
+      transform: scaleX(1);
+      transform-origin: left center;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sound-toggle,
+    .cart-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(18, 18, 22, 0.56);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: border-color 0.3s ease, color 0.3s ease, background 0.3s ease;
+    }
+
+    .sound-toggle:hover,
+    .cart-pill:hover,
+    .sound-toggle[aria-pressed="true"] {
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .sound-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2.5px;
+      height: 12px;
+    }
+
+    .sound-bars span {
+      display: block;
+      width: 2px;
+      height: 4px;
+      background: var(--gold);
+      border-radius: 1px;
+      opacity: 0.45;
+      transition: height 0.25s ease, opacity 0.25s ease;
+    }
+
+    .sound-toggle[aria-pressed="true"] .sound-bars span {
+      opacity: 1;
+      animation: soundWave 1.2s ease-in-out infinite;
+    }
+
+    .sound-toggle[aria-pressed="true"] .sound-bars span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .sound-toggle[aria-pressed="true"] .sound-bars span:nth-child(3) {
+      animation-delay: 0.45s;
+    }
+
+    @keyframes soundWave {
+      0%, 100% { height: 3px; }
+      50% { height: 12px; }
+    }
+
+    .cart-pill {
+      display: none;
+      color: var(--gold);
+      border-color: var(--border-strong);
+    }
+
+    .cart-pill.has-items {
+      display: inline-flex;
+    }
+
+    .cart-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--gold);
+      color: #0b0b0d;
+      font-weight: 600;
+      font-size: 0.65rem;
+      letter-spacing: 0;
+    }
+
+    /* =========================================================================
+       SIDE SECTION NUMBER INDICATOR (01 / 06)
+       ========================================================================= */
+    .section-rail {
+      position: fixed;
+      left: clamp(16px, 2.8vw, 42px);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    .rail-counter {
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      color: var(--text-muted);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .rail-counter strong {
+      color: var(--gold);
+      font-weight: 500;
+    }
+
+    .rail-pips {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .rail-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(242, 239, 233, 0.22);
+      transition: height 0.4s var(--ease-out), background 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+    }
+
+    .rail-pip::before {
+      content: "";
+      position: absolute;
+      inset: -6px;
+    }
+
+    .rail-pip:hover {
+      background: rgba(201, 164, 106, 0.7);
+    }
+
+    .rail-pip.active {
+      height: 24px;
+      background: var(--gold);
+      box-shadow: 0 0 12px rgba(201, 164, 106, 0.55);
+    }
+
+    .rail-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      min-height: 76px;
+      text-align: right;
+    }
+
+    /* =========================================================================
+       SCROLL STORY CONTAINER & SECTIONS
+       ========================================================================= */
+    main#story {
+      position: relative;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .story-section {
+      position: relative;
+      width: 100%;
+      min-height: 125vh;
+      pointer-events: none;
+    }
+
+    .story-section[data-section="hero"] {
+      min-height: 118vh;
+    }
+
+    .story-section[data-section="configure"] {
+      min-height: 155vh;
+    }
+
+    .story-section[data-section="contact"] {
+      min-height: 100vh;
+    }
+
+    .section-sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: var(--nav-height) clamp(24px, 7vw, 118px) 44px;
+      pointer-events: none;
+    }
+
+    .section-content {
+      max-width: 480px;
+      opacity: 0;
+      transform: translate3d(0, 26px, 0);
+      transition: opacity 0.75s var(--ease-out), transform 0.85s var(--ease-out);
+      pointer-events: none;
+    }
+
+    .section-content.in-view {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      pointer-events: auto;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.7rem;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 18px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: var(--gold);
+      opacity: 0.75;
+    }
+
+    h1, h2, h3 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .section-heading {
+      font-size: clamp(2.1rem, 4.4vw, 3.6rem);
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .section-heading em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .section-body {
+      font-size: clamp(0.92rem, 1.05vw, 1.02rem);
+      color: var(--text-muted);
+      font-weight: 300;
+      line-height: 1.75;
+      margin-bottom: 28px;
+    }
+
+    /* 1. HERO */
+    .hero-sticky {
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      padding-top: calc(var(--nav-height) + 4vh);
+      padding-bottom: 34px;
+    }
+
+    .hero-header {
+      max-width: 780px;
+      pointer-events: auto;
+    }
+
+    .hero-title {
+      font-size: clamp(3rem, 7.6vw, 6.4rem);
+      line-height: 1.03;
+      letter-spacing: -0.015em;
+      margin-bottom: 18px;
+      text-shadow: 0 12px 44px rgba(0, 0, 0, 0.75);
+    }
+
+    .hero-title .char {
+      display: inline-block;
+      opacity: 0;
+      transform: translate3d(0, 32px, 0);
+      filter: blur(6px);
+      transition:
+        opacity 0.9s var(--ease-out),
+        transform 1s var(--ease-out),
+        filter 0.9s var(--ease-out);
+      transition-delay: calc(var(--i) * 42ms);
+    }
+
+    body.app-ready .hero-title .char {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      filter: blur(0);
+    }
+
+    .hero-title .space {
+      width: 0.28em;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(0.86rem, 1.15vw, 1rem);
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 300;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.9s var(--ease-out) 0.7s, transform 0.9s var(--ease-out) 0.7s;
+    }
+
+    body.app-ready .hero-subtitle {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .scroll-cue {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 0.66rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.9s ease 1s;
+      pointer-events: auto;
+    }
+
+    body.app-ready .scroll-cue {
+      opacity: 0.85;
+    }
+
+    .scroll-cue.fade-away {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 44px;
+      background: rgba(242, 239, 233, 0.18);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scroll-line::after {
+      content: "";
+      position: absolute;
+      top: -100%;
+      left: 0;
+      width: 100%;
+      height: 60%;
+      background: linear-gradient(180deg, transparent, var(--gold));
+      animation: scrollPulse 2.2s var(--ease-in-out) infinite;
+    }
+
+    @keyframes scrollPulse {
+      0% { top: -60%; opacity: 0; }
+      35% { opacity: 1; }
+      100% { top: 115%; opacity: 0; }
+    }
+
+    /* 2. CRAFT */
+    .craft-sticky {
+      justify-content: flex-start;
+    }
+
+    .craft-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+    }
+
+    .craft-meta-item strong {
+      display: block;
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .craft-meta-item span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: block;
+      line-height: 1.45;
+    }
+
+    /* 3. COMFORT */
+    .comfort-sticky {
+      justify-content: flex-end;
+    }
+
+    .comfort-card {
+      max-width: 500px;
+      padding: clamp(24px, 3vw, 36px);
+      background: linear-gradient(145deg, rgba(16, 16, 20, 0.72), rgba(11, 11, 13, 0.48));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stat-value {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.5vw, 2.15rem);
+      line-height: 1;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      line-height: 1.38;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* 4. DETAILS + 3D HOTSPOTS */
+    .details-sticky {
+      align-items: flex-start;
+      padding-top: calc(var(--nav-height) + 5vh);
+    }
+
+    .details-header {
+      max-width: 440px;
+    }
+
+    #hotspots-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s var(--ease-out);
+    }
+
+    #hotspots-layer.visible {
+      opacity: 1;
+    }
+
+    .hotspot {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translate3d(-999px, -999px, 0);
+      pointer-events: none;
+    }
+
+    #hotspots-layer.visible .hotspot {
+      pointer-events: auto;
+    }
+
+    .hotspot-btn {
+      width: 28px;
+      height: 28px;
+      margin: -14px 0 0 -14px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: rgba(11, 11, 13, 0.62);
+      border: 1px solid rgba(201, 164, 106, 0.75);
+      transition: transform 0.3s var(--ease-out), background 0.3s ease;
+    }
+
+    .hotspot-btn::before {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid var(--gold);
+      opacity: 0.6;
+      animation: hotspotPulse 2.3s var(--ease-out) infinite;
+    }
+
+    .hotspot-btn::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 12px rgba(201, 164, 106, 0.9);
+    }
+
+    .hotspot-btn:hover,
+    .hotspot.open .hotspot-btn {
+      transform: scale(1.16);
+      background: rgba(201, 164, 106, 0.22);
+    }
+
+    @keyframes hotspotPulse {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(1.85); opacity: 0; }
+    }
+
+    .hotspot-tooltip {
+      position: absolute;
+      left: 22px;
+      top: -12px;
+      width: 236px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(14, 14, 18, 0.86);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transform: translate3d(8px, 0, 0);
+      pointer-events: none;
+      transition: opacity 0.3s var(--ease-out), transform 0.35s var(--ease-out);
+      z-index: 4;
+    }
+
+    .hotspot.align-left .hotspot-tooltip {
+      left: auto;
+      right: 22px;
+      transform: translate3d(-8px, 0, 0);
+    }
+
+    .hotspot:hover .hotspot-tooltip,
+    .hotspot:focus-within .hotspot-tooltip,
+    .hotspot.open .hotspot-tooltip {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      pointer-events: auto;
+    }
+
+    .hotspot-tooltip h4 {
+      font-family: var(--font-serif);
+      font-size: 0.96rem;
+      font-weight: 500;
+      color: var(--gold);
+      margin-bottom: 5px;
+    }
+
+    .hotspot-tooltip p {
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* 5. CONFIGURE SECTION & GLASS PANEL */
+    .configure-sticky {
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding-bottom: 34px;
+    }
+
+    .orbit-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(14, 14, 18, 0.62);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+      pointer-events: none;
+    }
+
+    .orbit-hint.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .orbit-hint svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--gold);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    /* Configurator Side Glass Panel */
+    #configurator-panel {
+      position: fixed;
+      top: calc(var(--nav-height) + 18px);
+      right: clamp(18px, 3vw, 42px);
+      bottom: 24px;
+      width: min(392px, calc(100vw - 36px));
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid rgba(242, 239, 233, 0.13);
+      border-radius: 20px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transform: translate3d(calc(100% + 60px), 0, 0);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.75s var(--ease-out), opacity 0.55s ease;
+      overflow: hidden;
+    }
+
+    #configurator-panel.visible {
+      transform: translate3d(0, 0, 0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .config-sheet-handle {
+      display: none;
+    }
+
+    .config-header {
+      padding: 22px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .config-kicker {
+      font-size: 0.64rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .config-title {
+      font-family: var(--font-serif);
+      font-size: 1.45rem;
+      line-height: 1.15;
+    }
+
+    .price-block {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .price-label {
+      display: block;
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .price-amount {
+      font-family: var(--font-serif);
+      font-size: 1.55rem;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .config-body {
+      padding: 18px 24px 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(201, 164, 106, 0.35) transparent;
+    }
+
+    .config-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .config-body::-webkit-scrollbar-thumb {
+      background: rgba(201, 164, 106, 0.35);
+      border-radius: 4px;
+    }
+
+    .config-group-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .config-group-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .config-group-value {
+      font-size: 0.8rem;
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    /* Fabric Swatches */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+
+    .swatch-btn {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      padding: 3px;
+      border: 1px solid transparent;
+      transition: transform 0.3s var(--ease-out), border-color 0.3s ease;
+    }
+
+    .swatch-btn:hover {
+      transform: translateY(-2px) scale(1.06);
+    }
+
+    .swatch-btn.active {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(201, 164, 106, 0.22);
+    }
+
+    .swatch-fill {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--swatch-color);
+      box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.22), inset 0 -3px 6px rgba(0, 0, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .swatch-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+      background-size: 4px 4px;
+      opacity: 0.55;
+    }
+
+    /* Segmented Toggles */
+    .segmented-control {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .seg-btn {
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      transition: border-color 0.3s ease, background 0.3s ease, color 0.3s ease, transform 0.25s var(--ease-out);
+    }
+
+    .seg-btn:hover {
+      border-color: rgba(242, 239, 233, 0.28);
+      color: var(--text);
+    }
+
+    .seg-btn.active {
+      border-color: var(--gold);
+      background: var(--gold-dim);
+      color: var(--text);
+    }
+
+    .seg-sub {
+      font-size: 0.64rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .seg-btn.active .seg-sub {
+      color: var(--gold);
+    }
+
+    .leg-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-bottom: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .config-specs {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(242, 239, 233, 0.07);
+      font-size: 0.73rem;
+      color: var(--text-muted);
+    }
+
+    .config-specs strong {
+      display: block;
+      color: var(--text);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .config-footer {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+      background: rgba(10, 10, 13, 0.45);
+    }
+
+    /* Buttons & Magnetic Micro-Interaction */
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      height: 48px;
+      padding: 0 24px;
+      border-radius: 12px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      transition:
+        background 0.35s var(--ease-out),
+        border-color 0.35s var(--ease-out),
+        color 0.35s var(--ease-out),
+        box-shadow 0.35s var(--ease-out),
+        transform 0.25s var(--ease-out);
+      will-change: transform;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #d7b57c 0%, var(--gold) 55%, #b1894c 100%);
+      color: #0b0b0d;
+      font-weight: 600;
+      box-shadow: 0 10px 28px rgba(201, 164, 106, 0.25);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 14px 36px rgba(201, 164, 106, 0.42);
+      filter: brightness(1.06);
+    }
+
+    .btn-secondary {
+      background: rgba(242, 239, 233, 0.04);
+      border: 1px solid rgba(201, 164, 106, 0.42);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(201, 164, 106, 0.12);
+      border-color: var(--gold);
+    }
+
+    .config-leadtime {
+      text-align: center;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* 6. CONTACT / FOOTER */
+    .contact-section {
+      display: flex;
+      align-items: flex-end;
+      min-height: 100vh;
+      padding: calc(var(--nav-height) + 40px) clamp(24px, 7vw, 118px) 48px;
+      pointer-events: none;
+    }
+
+    .footer-panel {
+      width: 100%;
+      padding: clamp(28px, 4.5vw, 56px);
+      border-radius: 24px;
+      background: linear-gradient(165deg, rgba(16, 16, 20, 0.84) 0%, rgba(10, 10, 12, 0.92) 100%);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid var(--border);
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(34px);
+      transition: opacity 0.85s var(--ease-out), transform 0.85s var(--ease-out);
+    }
+
+    .footer-panel.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .footer-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 28px;
+      padding-bottom: 36px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .footer-cta-copy {
+      max-width: 520px;
+    }
+
+    .footer-cta-copy h2 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    .footer-cta-copy p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 300;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr 1fr;
+      gap: 28px;
+      padding: 36px 0 32px;
+    }
+
+    .footer-brand-title {
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      letter-spacing: 0.34em;
+      margin-bottom: 14px;
+    }
+
+    .footer-col-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 14px;
+    }
+
+    .footer-col p,
+    .footer-col a {
+      display: block;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.8;
+      transition: color 0.25s ease;
+    }
+
+    .footer-col a:hover {
+      color: var(--text);
+    }
+
+    .footer-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(242, 239, 233, 0.07);
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .social-row {
+      display: flex;
+      gap: 22px;
+    }
+
+    .social-row a {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+      transition: color 0.25s ease;
+    }
+
+    .social-row a:hover {
+      color: var(--gold);
+    }
+
+    /* =========================================================================
+       MODAL (REQUEST A QUOTE) & CART TOAST / DRAWER
+       ========================================================================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(6, 6, 8, 0.76);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s var(--ease-out), visibility 0.4s var(--ease-out);
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      width: min(520px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      background: #121216;
+      border: 1px solid var(--border-strong);
+      border-radius: 20px;
+      padding: clamp(24px, 4vw, 36px);
+      box-shadow: 0 32px 90px rgba(0, 0, 0, 0.8);
+      position: relative;
+      transform: translateY(24px) scale(0.97);
+      transition: transform 0.45s var(--ease-out);
+    }
+
+    .modal-backdrop.open .modal-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+    }
+
+    .modal-close:hover {
+      border-color: var(--gold);
+      color: var(--text);
+      transform: rotate(90deg);
+    }
+
+    .modal-summary-pill {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 22px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(201, 164, 106, 0.08);
+      border: 1px solid rgba(201, 164, 106, 0.24);
+      font-size: 0.76rem;
+      color: var(--text);
+    }
+
+    .modal-summary-pill span {
+      color: var(--gold);
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 15px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-field label {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .form-field input,
+    .form-field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 0.9rem;
+      color: var(--text);
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .form-field input:focus,
+    .form-field textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .form-field.invalid input,
+    .form-field.invalid textarea {
+      border-color: #d96b6b;
+    }
+
+    .field-error {
+      font-size: 0.72rem;
+      color: #e48484;
+      min-height: 15px;
+      display: none;
+    }
+
+    .form-field.invalid .field-error {
+      display: block;
+    }
+
+    /* Success Checkmark Animation */
+    .quote-success {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 20px 10px 8px;
+      gap: 16px;
+    }
+
+    .quote-success.visible {
+      display: flex;
+    }
+
+    .check-circle {
+      width: 68px;
+      height: 68px;
+    }
+
+    .check-circle circle {
+      stroke: var(--gold);
+      stroke-width: 1.8;
+      fill: rgba(201, 164, 106, 0.08);
+      stroke-dasharray: 188;
+      stroke-dashoffset: 188;
+      animation: drawStroke 0.7s var(--ease-out) forwards;
+    }
+
+    .check-circle path {
+      stroke: var(--gold);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      stroke-dasharray: 50;
+      stroke-dashoffset: 50;
+      animation: drawStroke 0.5s var(--ease-out) 0.35s forwards;
+    }
+
+    @keyframes drawStroke {
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* Cart Toast */
+    #cart-toast {
+      position: fixed;
+      bottom: 26px;
+      left: 50%;
+      transform: translate3d(-50%, 90px, 0);
+      z-index: 180;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 22px;
+      border-radius: 14px;
+      background: rgba(16, 16, 20, 0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.5s var(--ease-out), opacity 0.4s ease;
+      max-width: calc(100vw - 32px);
+    }
+
+    #cart-toast.show {
+      transform: translate3d(-50%, 0, 0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toast-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .toast-text {
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .toast-text span {
+      color: var(--text-muted);
+      display: block;
+      font-size: 0.74rem;
+    }
+
+    /* Cart Drawer */
+    .cart-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 18px 0 22px;
+    }
+
+    .cart-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+    }
+
+    .cart-item-info strong {
+      display: block;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 1rem;
+    }
+
+    .cart-item-info span {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .cart-item-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .cart-remove {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .cart-remove:hover {
+      color: #e48484;
+    }
+
+    .cart-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+
+    /* =========================================================================
+       RESPONSIVE DESIGN (TABLET & MOBILE)
+       ========================================================================= */
+    @media (max-width: 960px) {
+      .section-rail {
+        display: none;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .section-sticky {
+        padding: var(--nav-height) 22px 32px;
+      }
+
+      .comfort-sticky {
+        align-items: flex-end;
+        justify-content: center;
+      }
+
+      .craft-sticky {
+        align-items: flex-end;
+      }
+
+      .footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* Mobile Bottom Sheet Configurator */
+      #configurator-panel {
+        top: auto;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        width: auto;
+        max-height: 54vh;
+        border-radius: 22px;
+        transform: translate3d(0, calc(100% + 40px), 0);
+      }
+
+      #configurator-panel.visible {
+        transform: translate3d(0, 0, 0);
+      }
+
+      #configurator-panel.collapsed {
+        max-height: 118px;
+      }
+
+      .config-sheet-handle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px 0 4px;
+        width: 100%;
+      }
+
+      .config-sheet-handle::after {
+        content: "";
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(242, 239, 233, 0.24);
+      }
+
+      .config-header {
+        padding: 8px 18px 12px;
+      }
+
+      .config-body {
+        padding: 14px 18px 16px;
+        gap: 16px;
+      }
+
+      .config-footer {
+        padding: 12px 18px 14px;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .config-footer .btn {
+        flex: 1 1 140px;
+        height: 44px;
+        padding: 0 12px;
+        font-size: 0.7rem;
+      }
+
+      .config-leadtime {
+        width: 100%;
+      }
+
+      .configure-sticky {
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: calc(var(--nav-height) + 12px);
+      }
+
+      .hotspot-tooltip {
+        width: 196px;
+        padding: 12px;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .stat-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sound-label-text {
+        display: none;
+      }
+    }
+
+    /* =========================================================================
+       REDUCED MOTION ACCESSIBILITY
+       ========================================================================= */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .hero-title .char {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+      }
+    }
+
+    /* =========================================================================
+       PERSIAN TYPOGRAPHY, RTL & DESIGNER BADGE
+       ========================================================================= */
+    body {
+      direction: rtl;
+      text-align: right;
+    }
+
+    .hero-designer-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
+      padding: 10px 24px;
+      border-radius: 999px;
+      background: rgba(201, 164, 106, 0.12);
+      border: 1px solid rgba(201, 164, 106, 0.42);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      font-size: clamp(0.85rem, 1.6vw, 1rem);
+      color: var(--text);
+      letter-spacing: 0.02em;
+      pointer-events: auto;
+      transition: transform 0.3s var(--ease-out), border-color 0.3s ease, box-shadow 0.3s ease;
+      animation: badgeGlow 4s ease-in-out infinite alternate;
+    }
+
+    .hero-designer-badge:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold);
+      box-shadow: 0 14px 38px rgba(201, 164, 106, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    @keyframes badgeGlow {
+      0% {
+        border-color: rgba(201, 164, 106, 0.35);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      100% {
+        border-color: rgba(201, 164, 106, 0.7);
+        box-shadow: 0 12px 34px rgba(201, 164, 106, 0.22);
+      }
+    }
+
+    .hero-designer-badge .designer-name strong {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .hero-designer-badge .designer-phone strong {
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    .hero-designer-badge .badge-icon {
+      color: var(--gold);
+      font-size: 0.85rem;
+    }
+
+    .hero-designer-badge .designer-sep {
+      opacity: 0.4;
+      color: var(--gold);
+    }
+
+    .loader-designer {
+      margin-top: 18px;
+      font-size: 0.82rem;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+      opacity: 0.95;
+    }
+
+    .sample-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      color: var(--gold);
+      background: rgba(201, 164, 106, 0.14);
+      padding: 1px 8px;
+      border-radius: 4px;
+      margin-right: 6px;
+      border: 1px solid rgba(201, 164, 106, 0.32);
+      vertical-align: middle;
+      font-weight: 400;
+    }
+
+    .footer-sample-item {
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.6;
+    }
+
+    /* Modal close positioned cleanly in RTL */
+    html[dir="rtl"] .modal-close {
+      right: auto;
+      left: 20px;
+    }
+
+    /* Hotspot 3D layer stays LTR for pixel coordinates */
+    #hotspots-layer {
+      direction: ltr;
+    }
+
+    .hotspot-tooltip {
+      direction: rtl;
+      text-align: right;
+    }
+
+    /* Inputs in RTL */
+    input[type="tel"], input[type="email"] {
+      direction: ltr;
+      text-align: right;
+    }
+
+    .price-amount {
+      direction: rtl;
+    }
+
+    @media (max-width: 540px) {
+      .hero-designer-badge {
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 18px;
+        border-radius: 18px;
+      }
+      .hero-designer-badge .designer-sep {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- LOADING SCREEN -->
+  <div id="loader" role="status" aria-live="polite">
+    <div class="loader-brand">میسون ابسیدین</div>
+    <div class="loader-sub">آتلیه طراحی معماری &middot; مبلمان لوکس و دست‌ساز</div>
+    <div class="loader-track">
+      <div class="loader-bar" id="loader-bar"></div>
+    </div>
+    <div class="loader-percent" id="loader-percent">۰۰٪</div>
+    <div class="loader-designer">طراحی شده توسط : سینا اقدم &middot; ۰۹۳۹۷۵۲۹۲۱۱</div>
+  </div>
+
+  <!-- FIXED 3D STAGE & ATMOSPHERIC OVERLAYS -->
+  <div id="webgl-stage" aria-hidden="true"></div>
+  <div class="vignette-overlay" aria-hidden="true"></div>
+  <div id="grain-overlay" aria-hidden="true"></div>
+  <div id="orbit-surface" aria-label="برای چرخش ۳۶۰ درجه مبل را بکشید (درگ کنید)"></div>
+
+  <!-- 3D PROJECTED HOTSPOTS (SECTION 4) -->
+  <div id="hotspots-layer" aria-label="جزئیات معماری کاناپه"></div>
+
+  <!-- CUSTOM CURSOR -->
+  <div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
+  <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+
+  <!-- FIXED TOP NAVIGATION -->
+  <header class="top-nav" id="top-nav">
+    <a href="#hero" class="nav-logo" data-scroll-target="hero">میسون ابسیدین</a>
+    <div class="nav-right">
+      <nav aria-label="ناوبری اصلی">
+        <ul class="nav-links">
+          <li><a href="#craft" class="nav-link" data-scroll-target="craft">هنر ساخت</a></li>
+          <li><a href="#details" class="nav-link" data-scroll-target="details">جزئیات</a></li>
+          <li><a href="#configure" class="nav-link" data-scroll-target="configure">شخصی‌سازی</a></li>
+          <li><a href="#contact" class="nav-link" data-scroll-target="contact">شوروم و تماس</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <button type="button" class="cart-pill" id="cart-pill-btn" aria-label="مشاهده سبد سفارش">
+          <span>سبد سفارش</span>
+          <span class="cart-count" id="cart-count">۰</span>
+        </button>
+        <button type="button" class="sound-toggle" id="sound-toggle" aria-pressed="false" aria-label="پخش یا قطع صدای آرامش‌بخش گالری">
+          <span class="sound-bars" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+          <span class="sound-label-text" id="sound-label">صدا خاموش</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- VERTICAL SECTION INDICATOR (01 / 06) -->
+  <aside class="section-rail" aria-label="بخش‌های صفحه">
+    <div class="rail-counter" aria-live="polite">
+      <strong id="rail-current">01</strong> / 06
+    </div>
+    <div class="rail-pips" id="rail-pips">
+      <button type="button" class="rail-pip active" data-scroll-target="hero" aria-label="بخش ۱: پیش‌درآمد"></button>
+      <button type="button" class="rail-pip" data-scroll-target="craft" aria-label="بخش ۲: هنر ساخت"></button>
+      <button type="button" class="rail-pip" data-scroll-target="comfort" aria-label="بخش ۳: نهایت راحتی"></button>
+      <button type="button" class="rail-pip" data-scroll-target="details" aria-label="بخش ۴: جزئیات معماری"></button>
+      <button type="button" class="rail-pip" data-scroll-target="configure" aria-label="بخش ۵: شخصی‌سازی"></button>
+      <button type="button" class="rail-pip" data-scroll-target="contact" aria-label="بخش ۶: شوروم و ارتباط"></button>
+    </div>
+    <div class="rail-label" id="rail-label">پیش‌درآمد</div>
+  </aside>
+
+  <!-- SCROLL-DRIVEN CINEMATIC SECTIONS -->
+  <main id="story">
+    <!-- 01 / HERO -->
+    <section class="story-section" id="hero" data-section="hero" data-index="0" data-name="پیش‌درآمد">
+      <div class="section-sticky hero-sticky">
+        <div class="hero-header">
+          <div class="eyebrow" style="justify-content:center;">کلکسیون شبانه &middot; ویرایش اختصاصی IV</div>
+          <h1 class="hero-title" id="hero-title" aria-label="در سکوت آرام بگیرید.">در سکوت آرام بگیرید.</h1>
+          <p class="hero-subtitle">تودوزی مجسمه‌گون &middot; ساخت اختصاصی به سفارش مشتری</p>
+          <div class="hero-designer-badge">
+            <span class="badge-icon">✦</span>
+            <span class="designer-name">طراحی شده توسط : <strong>سینا اقدم</strong></span>
+            <span class="designer-sep">|</span>
+            <span class="designer-phone">شماره تماس : <strong dir="ltr">09397529211</strong></span>
+          </div>
+        </div>
+        <button type="button" class="scroll-cue" id="scroll-cue" data-scroll-target="craft" aria-label="برای کشف هنر ساخت اسکرول کنید">
+          <span>برای کشف جزئیات اسکرول کنید</span>
+          <span class="scroll-line" aria-hidden="true"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 02 / CRAFT -->
+    <section class="story-section" id="craft" data-section="craft" data-index="1" data-name="هنر ساخت">
+      <div class="section-sticky craft-sticky">
+        <div class="section-content" data-reveal="1">
+          <div class="eyebrow">۰۲ &mdash; تسلط بر بافت و هنر دست</div>
+          <h2 class="section-heading">دوخته‌شده همچون <em>لباس‌های فاخر</em>، تنیده‌شده برای دهه‌ها ماندگاری.</h2>
+          <p class="section-body">
+            هر اثر از کاناپه‌های ابسیدین توسط یک استادکار برجسته در طول بیش از ۴۲ ساعت کار دستی خلق می‌گردد.
+            پارچه‌های بوکله بلژیکی، کتان شسته‌شده و چرم‌های خالص با مهارت تمام بر روی خطوط انحنادار سازه کشیده شده
+            و با درزهای پنهان فرانسوی تثبیت می‌شوند تا هرگونه تنش بصری محو شده و حسی سرشار از آرامش لمس شود.
+          </p>
+          <div class="craft-meta">
+            <div class="craft-meta-item">
+              <strong>۴۲ ساعت</strong>
+              <span>برش، سوزن‌کاری و دوخت دستی اختصاصی برای هر سفارش شناسنامه‌دار.</span>
+            </div>
+            <div class="craft-meta-item">
+              <strong>۸۰,۰۰۰ دور</strong>
+              <span>مقاومت سایش استاندارد مارتیندیل تجاری، تضمین‌کننده دهه‌ها استراحت و استفاده روزانه.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 / COMFORT -->
+    <section class="story-section" id="comfort" data-section="comfort" data-index="2" data-name="نهایت راحتی">
+      <div class="section-sticky comfort-sticky">
+        <div class="section-content comfort-card" data-reveal="2">
+          <div class="eyebrow">۰۳ &mdash; مهندسی ارگونومی و آسایش</div>
+          <h2 class="section-heading">مهندسی‌شده برای عمق آرامش <em>بدون شتاب</em>.</h2>
+          <p class="section-body">
+            عمق نشیمن دست‌ودلباز ۱۰۲ سانتی‌متری همراه با زاویه شیب ۱۱ درجه‌ای تکیه‌گاه ارگونومیک.
+            زیر لایه تاج‌دار پر طبیعی غاز، یک هسته چندلایه با تراکم متغیر قرار دارد که
+            بلافاصله فرم بدن را دربرمی‌گیرد و با برخاستن، با وقار تمام به حالت اول بازمی‌گردد.
+          </p>
+          <div class="stat-grid" id="comfort-stats">
+            <div class="stat-item">
+              <span class="stat-value" data-counter-target="5" data-counter-suffix=" لایه">0 لایه</span>
+              <span class="stat-label">هسته اسفنج ارتجاعی و پر طبیعی</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" data-counter-target="10" data-counter-suffix=" سال">0 سال</span>
+              <span class="stat-label">ضمانت ساختاری کلاف و اسکلت مبل</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" data-counter-target="100" data-counter-suffix="٪">0٪</span>
+              <span class="stat-label">چوب طبیعی جنگلی با گواهی FSC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 / DETAILS -->
+    <section class="story-section" id="details" data-section="details" data-index="3" data-name="جزئیات معماری">
+      <div class="section-sticky details-sticky">
+        <div class="section-content details-header" data-reveal="3">
+          <div class="eyebrow">۰۴ &mdash; آناتومی و سازه مهندسی</div>
+          <h2 class="section-heading"><em>دقت و ظرافت</em> بی‌صدا تا سرانگشت پایه‌ها.</h2>
+          <p class="section-body">
+            نشانگرهای نورانی روی مبل را لمس یا هاور کنید تا پایه‌های چوب سخت خراطی‌شده،
+            یراق‌آلات برنجی مات یکپارچه و شاسی تعلیق فنر پاکتی معلق را از نزدیک نظاره کنید.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 / CONFIGURE -->
+    <section class="story-section" id="configure" data-section="configure" data-index="4" data-name="شخصی‌سازی">
+      <div class="section-sticky configure-sticky">
+        <div class="orbit-hint" id="orbit-hint" aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12a9 9 0 0 1-15.4 6.36M3 12a9 9 0 0 1 15.4-6.36" />
+            <polyline points="16 5 19 6 18 9" />
+            <polyline points="8 19 5 18 6 15" />
+          </svg>
+          <span>برای چرخش ۳۶۰ درجه مبل را بکشید (درگ کنید)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 / CONTACT & FOOTER -->
+    <section class="story-section contact-section" id="contact" data-section="contact" data-index="5" data-name="شوروم و ارتباط">
+      <footer class="footer-panel" data-reveal="5">
+        <div class="footer-top">
+          <div class="footer-cta-copy">
+            <div class="eyebrow">۰۶ &mdash; رزرو وقت بازدید اختصاصی</div>
+            <h2>آرامش و شکوه را از نزدیک تجربه کنید.</h2>
+            <p>
+              رزرو وقت اختصاصی برای بازدید از شوروم مرکزی. دریافت کالیته فیزیکی نمونه پارچه‌ها
+              و چرم‌های طبیعی به همراه مشاوره تخصصی پلان و چیدمان با تیم معماران ما.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary magnetic" id="footer-quote-btn">
+            رزرو وقت بازدید اختصاصی
+          </button>
+        </div>
+
+        <div class="footer-grid">
+          <div class="footer-col">
+            <div class="footer-brand-title">میسون ابسیدین</div>
+            <p>
+              تولید محدود و دست‌ساز مبلمان مدرن با معماری متمایز؛ خلق‌شده بر اساس سفارش اختصاصی
+              برای منازل مسکونی خاص، پروژه‌های ویلایی، گالری‌ها و فضاهای مجلل.
+            </p>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-label">شوروم مرکزی (آدرس نمونه)</div>
+            <p>تهران، خیابان ولیعصر، بالاتر از تقاطع پارک‌وی، مجتمع نگین، طبقه ۵، واحد ۵۰۱ <span class="sample-tag">آدرس نمونه</span></p>
+            <p>گالری و شوروم اختصاصی نوکتورن <span class="sample-tag">نمونه تستی</span></p>
+            <p>سه‌شنبه تا یکشنبه &middot; ساعت ۱۱:۰۰ تا ۲۰:۰۰</p>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-label">ارتباط و پشتیبانی (اطلاعات نمونه)</div>
+            <p class="footer-sample-item">تلفن دفتر مرکزی: <span dir="ltr">۰۲۱-۲۲۰۰۳۳۴۴</span> <span class="sample-tag">نمونه</span></p>
+            <p class="footer-sample-item">تلفن همراه و طراح: <span dir="ltr">09397529211</span> <span class="sample-tag">سینا اقدم</span></p>
+            <p class="footer-sample-item">ایمیل استعلام: <span dir="ltr">info@obsidian-atelier.ir</span> <span class="sample-tag">نمونه تستی</span></p>
+            <a href="#configure" data-scroll-target="configure">طرح همکاری با معماران و طراحان داخلی</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-label">استانداردهای میسون ابسیدین</div>
+            <p>حمل و تحویل تشریفاتی در سراسر ایران</p>
+            <p>۱۰ سال ضمانت کتبی بدون قید و شرط کلاف</p>
+            <p>چوب‌های راش و بلوط پایدار با گواهی FSC</p>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <span>&copy; ۱۴۰۵ میسون ابسیدین. تمامی حقوق محفوظ است. طراحی شده توسط : سینااقدم (09397529211)</span>
+          <div class="social-row">
+            <a href="#contact" data-scroll-target="contact" aria-label="اینستاگرام">اینستاگرام</a>
+            <a href="#contact" data-scroll-target="contact" aria-label="پینترست">پینترست</a>
+            <a href="#contact" data-scroll-target="contact" aria-label="مطبوعات">مطبوعات و رسانه</a>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- GLASS-MORPHISM CONFIGURATOR PANEL -->
+  <aside id="configurator-panel" aria-label="پنل شخصی‌سازی کاناپه">
+    <button type="button" class="config-sheet-handle" id="sheet-handle" aria-label="باز یا بستن پنل شخصی‌سازی"></button>
+
+    <div class="config-header">
+      <div>
+        <div class="config-kicker">آتلیه طراحی اختصاصی</div>
+        <h2 class="config-title">کاناپه نوکتورن</h2>
+      </div>
+      <div class="price-block">
+        <span class="price-label">برآورد سفارش</span>
+        <div class="price-amount" id="live-price" aria-live="polite">۳,۱۹۰ دلار</div>
+      </div>
+    </div>
+
+    <div class="config-body">
+      <!-- 1. Fabric Swatches -->
+      <div>
+        <div class="config-group-head">
+          <span class="config-group-label">نوع پارچه و روکش</span>
+          <span class="config-group-value" id="fabric-name">بوکله عاجی</span>
+        </div>
+        <div class="swatch-grid" id="swatch-grid" role="radiogroup" aria-label="رنگ و جنس پارچه"></div>
+      </div>
+
+      <!-- 2. Leg Finish -->
+      <div>
+        <div class="config-group-head">
+          <span class="config-group-label">جنس و رنگ پایه</span>
+          <span class="config-group-value" id="leg-name">گردوی آمریکایی</span>
+        </div>
+        <div class="segmented-control" id="leg-controls" role="radiogroup" aria-label="جنس پایه‌ها"></div>
+      </div>
+
+      <!-- 3. Size Toggle -->
+      <div>
+        <div class="config-group-head">
+          <span class="config-group-label">مدل و ابعاد</span>
+          <span class="config-group-value" id="size-name">۳ نفره &middot; ۲۴۸ سانتی‌متر</span>
+        </div>
+        <div class="segmented-control" id="size-controls" role="radiogroup" aria-label="سایز کاناپه"></div>
+      </div>
+
+      <!-- Live Dimensions Summary -->
+      <div class="config-specs" aria-label="ابعاد انتخابی کاناپه">
+        <div>
+          عرض
+          <strong id="spec-width">۲۴۸ سانتی‌متر</strong>
+        </div>
+        <div>
+          عمق
+          <strong id="spec-depth">۱۰۲ سانتی‌متر</strong>
+        </div>
+        <div>
+          ارتفاع نشیمن
+          <strong>۴۲ سانتی‌متر</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-footer">
+      <button type="button" class="btn btn-primary magnetic" id="add-to-cart-btn">
+        افزودن به سبد سفارش
+      </button>
+      <button type="button" class="btn btn-secondary magnetic" id="request-quote-btn">
+        استعلام قیمت اختصاصی
+      </button>
+      <div class="config-leadtime">ارسال رایگان به همراه نصب تشریفاتی &middot; ۶ الی ۸ هفته کاری</div>
+    </div>
+  </aside>
+
+  <!-- QUOTE REQUEST MODAL -->
+  <div class="modal-backdrop" id="quote-modal" role="dialog" aria-modal="true" aria-labelledby="quote-modal-title" aria-hidden="true">
+    <div class="modal-card">
+      <button type="button" class="modal-close" id="quote-modal-close" aria-label="بستن پنجره استعلام">&times;</button>
+
+      <div id="quote-form-wrap">
+        <div class="eyebrow" style="margin-bottom:10px;">تشریفات و سفارش اختصاصی</div>
+        <h3 id="quote-modal-title" style="font-size:1.8rem; line-height:1.15;">درخواست استعلام قیمت و مشاوره</h3>
+        <p style="font-size:0.86rem; color:var(--text-muted); margin-top:8px;">
+          مشاوران طراحی ما ظرف ۴ ساعت کاری با شما تماس گرفته و کالیته نمونه پارچه‌ها را به آدرس شما ارسال می‌نمایند.
+        </p>
+
+        <div class="modal-summary-pill" id="modal-config-summary"></div>
+
+        <form id="quote-form" class="form-grid" novalidate>
+          <div class="form-field" id="field-name">
+            <label for="q-name">نام و نام خانوادگی *</label>
+            <input type="text" id="q-name" name="name" autocomplete="name" placeholder="مثلاً سارا راد" required />
+            <span class="field-error">لطفاً نام و نام خانوادگی خود را وارد کنید.</span>
+          </div>
+
+          <div class="form-field" id="field-email">
+            <label for="q-email">آدرس ایمیل *</label>
+            <input type="email" id="q-email" name="email" autocomplete="email" placeholder="sara@example.ir" required />
+            <span class="field-error">لطفاً یک آدرس ایمیل معتبر وارد کنید.</span>
+          </div>
+
+          <div class="form-field" id="field-phone">
+            <label for="q-phone">شماره تماس همراه *</label>
+            <input type="tel" id="q-phone" name="phone" autocomplete="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required />
+            <span class="field-error">لطفاً یک شماره تماس معتبر وارد کنید.</span>
+          </div>
+
+          <div class="form-field" id="field-message">
+            <label for="q-message">یادداشت پروژه، ابعاد سالن یا زمان‌بندی تحویل</label>
+            <textarea id="q-message" name="message" rows="3" placeholder="درباره ابعاد فضای مورد نظر، تم رنگی یا زمان تحویل پیشنهادی خود برای ما بنویسید..."></textarea>
+            <span class="field-error">لطفاً طول پیام خود را کمتر از ۱۰۰۰ کاراکتر نگه دارید.</span>
+          </div>
+
+          <button type="submit" class="btn btn-primary magnetic" style="margin-top:6px;">
+            ثبت و ارسال درخواست استعلام
+          </button>
+        </form>
+      </div>
+
+      <div class="quote-success" id="quote-success" aria-live="polite">
+        <svg class="check-circle" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="29" />
+          <path d="M20 33.5 L28.5 41.5 L44.5 23.5" />
+        </svg>
+        <div class="eyebrow" style="margin-bottom:0;">درخواست با موفقیت دریافت شد</div>
+        <h3 style="font-size:1.75rem;">با تشکر از شما، <span id="success-client-name">مهمان گرامی</span>.</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); max-width:360px;">
+          پرونده درخواست شما برای کاناپه <strong id="success-config-text" style="color:var(--text); font-weight:500;"></strong>
+          به تیم طراحی و سفارشات ارجاع داده شد. به زودی جهت هماهنگی با شما تماس حاصل خواهد شد.
+        </p>
+        <button type="button" class="btn btn-secondary" id="quote-done-btn" style="margin-top:8px;">
+          بازگشت به گالری
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ATELIER BAG MODAL -->
+  <div class="modal-backdrop" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-modal-title" aria-hidden="true">
+    <div class="modal-card">
+      <button type="button" class="modal-close" id="cart-modal-close" aria-label="بستن سبد سفارش">&times;</button>
+      <div class="eyebrow" style="margin-bottom:10px;">انتخاب‌های شما</div>
+      <h3 id="cart-modal-title" style="font-size:1.75rem;">سبد سفارش اختصاصی</h3>
+      <div class="cart-items-list" id="cart-items-list"></div>
+      <div class="cart-total-row">
+        <span style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);">مجموع برآورد تقریبی</span>
+        <strong id="cart-total-price" style="font-family:var(--font-serif); font-size:1.6rem; color:var(--gold); font-weight:400;">۰ دلار</strong>
+      </div>
+      <button type="button" class="btn btn-primary" id="cart-checkout-btn" style="width:100%;">
+        ادامه و ثبت استعلام اختصاصی
+      </button>
+    </div>
+  </div>
+
+  <!-- CART CONFIRMATION TOAST -->
+  <div id="cart-toast" role="status" aria-live="polite">
+    <span class="toast-dot" aria-hidden="true"></span>
+    <div class="toast-text" id="cart-toast-text">
+      به سبد سفارش اضافه شد
+      <span>کاناپه نوکتورن</span>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* =======================================================================
+         1. CONFIG & APPLICATION STATE
+         ======================================================================= */
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const isFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+      const FABRICS = [
+        {
+          id: "ivory",
+          name: "بوکله عاجی",
+          short: "بوکله",
+          color: "#dfd7ca",
+          pillowColor: "#c8b9a3",
+          roughness: 0.92,
+          metalness: 0.02,
+          normalScale: 0.72,
+          sheen: 0.0,
+          priceDelta: 0
+        },
+        {
+          id: "sage",
+          name: "مخمل مریم‌گلی",
+          short: "مخمل",
+          color: "#54665c",
+          pillowColor: "#8a9488",
+          roughness: 0.64,
+          metalness: 0.08,
+          normalScale: 0.34,
+          sheen: 0.25,
+          priceDelta: 240
+        },
+        {
+          id: "terracotta",
+          name: "کتان اخرایی",
+          short: "کتان",
+          color: "#98523d",
+          pillowColor: "#c69c7e",
+          roughness: 0.88,
+          metalness: 0.02,
+          normalScale: 0.62,
+          sheen: 0.0,
+          priceDelta: 120
+        },
+        {
+          id: "navy",
+          name: "مخمل سرمه‌ای شب",
+          short: "مخمل",
+          color: "#222d42",
+          pillowColor: "#637089",
+          roughness: 0.68,
+          metalness: 0.07,
+          normalScale: 0.38,
+          sheen: 0.2,
+          priceDelta: 180
+        },
+        {
+          id: "charcoal",
+          name: "پشم زغالی",
+          short: "پشم",
+          color: "#36373c",
+          pillowColor: "#69665f",
+          roughness: 0.90,
+          metalness: 0.03,
+          normalScale: 0.66,
+          sheen: 0.0,
+          priceDelta: 150
+        },
+        {
+          id: "camel",
+          name: "چرم آنیلین شتری",
+          short: "چرم خالص",
+          color: "#99653c",
+          pillowColor: "#533928",
+          roughness: 0.42,
+          metalness: 0.06,
+          normalScale: 0.24,
+          sheen: 0.15,
+          priceDelta: 560
+        }
+      ];
+
+      const LEG_FINISHES = [
+        {
+          id: "walnut",
+          name: "گردوی آمریکایی",
+          short: "گردو",
+          dotColor: "#543422",
+          color: "#6b442c",
+          roughness: 0.46,
+          metalness: 0.06,
+          useWood: true,
+          priceDelta: 0
+        },
+        {
+          id: "black-oak",
+          name: "بلوط سیاه دودی",
+          short: "بلوط سیاه",
+          dotColor: "#232120",
+          color: "#292625",
+          roughness: 0.50,
+          metalness: 0.09,
+          useWood: true,
+          priceDelta: 120
+        },
+        {
+          id: "brass",
+          name: "برنج پرداخت‌شده",
+          short: "برنج",
+          dotColor: "#c9a46a",
+          color: "#d4b074",
+          roughness: 0.26,
+          metalness: 0.90,
+          useWood: false,
+          priceDelta: 280
+        }
+      ];
+
+      const SIZES = [
+        {
+          id: "2-seater",
+          name: "دو نفره",
+          label: "۲ نفره",
+          widthCm: 188,
+          depthCm: 102,
+          basePrice: 2490
+        },
+        {
+          id: "3-seater",
+          name: "سه نفره",
+          label: "۳ نفره",
+          widthCm: 248,
+          depthCm: 102,
+          basePrice: 3190
+        },
+        {
+          id: "corner",
+          name: "کاناپه ال (سکشنال)",
+          label: "مدل ال",
+          widthCm: 286,
+          depthCm: 174,
+          basePrice: 4690
+        }
+      ];
+
+      const HOTSPOT_DEFS = [
+        {
+          id: "leg",
+          title: "پایه مخروطی خراطی‌شده",
+          desc: "چوب سخت جنگلی یکپارچه با زاویه شیب ۴ درجه‌ای جهت ایجاد ایستایی باوقار و جلوه بصری معلق."
+        },
+        {
+          id: "ferrule",
+          title: "سرپایه برنجی مات یکپارچه",
+          desc: "یراق‌آلات برنجی تراش‌خورده با روکش محافظ میکرو-لاک برای ممانعت از ایجاد خط و خش روی کف و تثبیت فرم."
+        },
+        {
+          id: "piping",
+          title: "نوار مغزی و درز فرانسوی",
+          desc: "دوخت دو ردیفه صنعتی در پیرامون نشیمن و کوسن‌ها جهت حفظ فرم و ایستایی اولیه در گذر سالیان."
+        },
+        {
+          id: "plinth",
+          title: "شاسی تعلیق فنر پاکتی معلق",
+          desc: "سیستم تعلیق فولادی متصل ۸ جهته دست‌ساز درون کلاف چوب راش کوره رفته بدون کوچک‌ترین افتادگی."
+        }
+      ];
+
+      const state = {
+        fabricIndex: 0,
+        legIndex: 0,
+        sizeIndex: 1, // Default: 3-Seater
+        scrollProgress: 0,
+        smoothProgress: 0,
+        activeSectionIndex: 0,
+        inConfigure: false,
+        inDetails: false,
+        mouseX: 0,
+        mouseY: 0,
+        smoothMouseX: 0,
+        smoothMouseY: 0,
+        // Configure drag orbit offsets
+        orbitYawTarget: 0,
+        orbitYawCurrent: 0,
+        orbitPitchTarget: 0,
+        orbitPitchCurrent: 0,
+        isDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+        // Live price animation
+        displayedPrice: 3190,
+        targetPrice: 3190,
+        // Cart
+        cart: [],
+        // Audio
+        soundOn: false,
+        // Stats triggered once
+        statsAnimated: false
+      };
+
+      /* =======================================================================
+         2. UTILITIES
+         ======================================================================= */
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function damp(current, target, lambda, dt) {
+        return lerp(current, target, 1 - Math.exp(-lambda * dt));
+      }
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function formatUSD(amount) {
+        return Math.round(amount).toLocaleString("fa-IR") + " دلار";
+      }
+
+      function hash2(x, y) {
+        const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function valueNoise2D(x, y) {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        const fx = x - ix;
+        const fy = y - iy;
+        const ux = fx * fx * (3 - 2 * fx);
+        const uy = fy * fy * (3 - 2 * fy);
+        const a = hash2(ix, iy);
+        const b = hash2(ix + 1, iy);
+        const c = hash2(ix, iy + 1);
+        const d = hash2(ix + 1, iy + 1);
+        return lerp(lerp(a, b, ux), lerp(c, d, ux), uy);
+      }
+
+      function fbm2D(x, y) {
+        let v = 0;
+        let amp = 0.5;
+        let freq = 1;
+        for (let i = 0; i < 4; i++) {
+          v += amp * valueNoise2D(x * freq, y * freq);
+          freq *= 2.02;
+          amp *= 0.5;
+        }
+        return v;
+      }
+
+      /* =======================================================================
+         3. PROCEDURAL TEXTURES & STUDIO ENVIRONMENT
+         ======================================================================= */
+      function createFabricTextures() {
+        const size = 256;
+
+        // 1. Heightfield for fine crosshatch weave + bouclé loops
+        const heightData = new Float32Array(size * size);
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const warp = Math.sin(x * 0.78) * 0.5 + 0.5;
+            const weft = Math.sin(y * 0.78 + (x % 4 < 2 ? 0 : Math.PI)) * 0.5 + 0.5;
+            const weave = (warp * 0.55 + weft * 0.45);
+            const boucleNub = fbm2D(x * 0.14, y * 0.14);
+            const micro = hash2(x, y);
+            const h = weave * 0.42 + boucleNub * 0.40 + micro * 0.18;
+            heightData[y * size + x] = clamp(h, 0, 1);
+          }
+        }
+
+        // Subtle Albedo Weave Modulation Map (near white so material color tints cleanly)
+        const albedoCanvas = document.createElement("canvas");
+        albedoCanvas.width = size;
+        albedoCanvas.height = size;
+        const aCtx = albedoCanvas.getContext("2d");
+        const aImg = aCtx.createImageData(size, size);
+
+        // Roughness Map
+        const roughCanvas = document.createElement("canvas");
+        roughCanvas.width = size;
+        roughCanvas.height = size;
+        const rCtx = roughCanvas.getContext("2d");
+        const rImg = rCtx.createImageData(size, size);
+
+        // Normal Map via Sobel gradient
+        const normCanvas = document.createElement("canvas");
+        normCanvas.width = size;
+        normCanvas.height = size;
+        const nCtx = normCanvas.getContext("2d");
+        const nImg = nCtx.createImageData(size, size);
+
+        const strength = 2.6;
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const idx = (y * size + x) * 4;
+            const h = heightData[y * size + x];
+
+            // Subtle tonal depth in the weave
+            const shade = Math.round(218 + h * 37);
+            aImg.data[idx] = shade;
+            aImg.data[idx + 1] = shade;
+            aImg.data[idx + 2] = shade;
+            aImg.data[idx + 3] = 255;
+
+            // Roughness micro-variation
+            const roughVal = Math.round(205 + (1 - h) * 50);
+            rImg.data[idx] = roughVal;
+            rImg.data[idx + 1] = roughVal;
+            rImg.data[idx + 2] = roughVal;
+            rImg.data[idx + 3] = 255;
+
+            // Normal map neighbors (wrapping)
+            const xm = (x - 1 + size) % size;
+            const xp = (x + 1) % size;
+            const ym = (y - 1 + size) % size;
+            const yp = (y + 1) % size;
+
+            const dx = (heightData[y * size + xp] - heightData[y * size + xm]) * strength;
+            const dy = (heightData[yp * size + x] - heightData[ym * size + x]) * strength;
+            const dz = 1.0;
+            const invLen = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            nImg.data[idx] = Math.round((-dx * invLen * 0.5 + 0.5) * 255);
+            nImg.data[idx + 1] = Math.round((-dy * invLen * 0.5 + 0.5) * 255);
+            nImg.data[idx + 2] = Math.round((dz * invLen * 0.5 + 0.5) * 255);
+            nImg.data[idx + 3] = 255;
+          }
+        }
+
+        aCtx.putImageData(aImg, 0, 0);
+        rCtx.putImageData(rImg, 0, 0);
+        nCtx.putImageData(nImg, 0, 0);
+
+        const map = new THREE.CanvasTexture(albedoCanvas);
+        const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+        const normalMap = new THREE.CanvasTexture(normCanvas);
+
+        [map, roughnessMap, normalMap].forEach((tex) => {
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.RepeatWrapping;
+          tex.repeat.set(3.2, 3.2);
+          tex.anisotropy = 4;
+        });
+        map.encoding = THREE.sRGBEncoding;
+
+        return { map, roughnessMap, normalMap };
+      }
+
+      function createWoodTextures() {
+        const w = 256;
+        const h = 256;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+
+        const bumpCanvas = document.createElement("canvas");
+        bumpCanvas.width = w;
+        bumpCanvas.height = h;
+        const bCtx = bumpCanvas.getContext("2d");
+
+        const img = ctx.createImageData(w, h);
+        const bImg = bCtx.createImageData(w, h);
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const nx = x / w;
+            const ny = y / h;
+            const warp = fbm2D(nx * 6, ny * 2.2) * 1.4;
+            const rings = Math.sin((nx * 18 + warp) * Math.PI * 2) * 0.5 + 0.5;
+            const fine = valueNoise2D(x * 0.65, y * 0.08);
+            const grain = clamp(rings * 0.65 + fine * 0.35, 0, 1);
+
+            const idx = (y * w + x) * 4;
+            // Warm neutral-tinted grain (multiplied by leg material color)
+            const r = Math.round(140 + grain * 105);
+            const g = Math.round(122 + grain * 98);
+            const b = Math.round(108 + grain * 88);
+
+            img.data[idx] = r;
+            img.data[idx + 1] = g;
+            img.data[idx + 2] = b;
+            img.data[idx + 3] = 255;
+
+            const bv = Math.round(grain * 255);
+            bImg.data[idx] = bv;
+            bImg.data[idx + 1] = bv;
+            bImg.data[idx + 2] = bv;
+            bImg.data[idx + 3] = 255;
+          }
+        }
+
+        ctx.putImageData(img, 0, 0);
+        bCtx.putImageData(bImg, 0, 0);
+
+        const map = new THREE.CanvasTexture(canvas);
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        map.encoding = THREE.sRGBEncoding;
+
+        const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+        bumpMap.wrapS = THREE.RepeatWrapping;
+        bumpMap.wrapT = THREE.RepeatWrapping;
+
+        return { map, bumpMap };
+      }
+
+      function createBrushedMetalTexture() {
+        const w = 128;
+        const h = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#c8c8c8";
+        ctx.fillRect(0, 0, w, h);
+
+        for (let y = 0; y < h; y++) {
+          const v = 165 + Math.floor(hash2(y, 13.7) * 75);
+          ctx.fillStyle = `rgb(${v},${v},${v})`;
+          ctx.fillRect(0, y, w, 1);
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+      }
+
+      function createSoftParticleTexture() {
+        const size = 64;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        grad.addColorStop(0, "rgba(255, 240, 214, 1)");
+        grad.addColorStop(0.32, "rgba(232, 198, 146, 0.55)");
+        grad.addColorStop(0.7, "rgba(201, 164, 106, 0.12)");
+        grad.addColorStop(1, "rgba(201, 164, 106, 0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function createPodiumTexture() {
+        const size = 512;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const grad = ctx.createRadialGradient(size / 2, size / 2, 20, size / 2, size / 2, size / 2);
+        grad.addColorStop(0, "#1c1c22");
+        grad.addColorStop(0.55, "#111115");
+        grad.addColorStop(0.92, "#0b0b0e");
+        grad.addColorStop(1, "#08080a");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+
+        // Subtle honed stone micro-speckle
+        for (let i = 0; i < 4000; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const alpha = Math.random() * 0.035;
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.fillRect(x, y, 1.5, 1.5);
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      function createContactShadowTexture() {
+        const size = 256;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const grad = ctx.createRadialGradient(size / 2, size / 2, 18, size / 2, size / 2, size / 2);
+        grad.addColorStop(0, "rgba(0, 0, 0, 0.72)");
+        grad.addColorStop(0.55, "rgba(0, 0, 0, 0.35)");
+        grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function createStudioEnvironment(renderer) {
+        const w = 256;
+        const h = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+
+        // Dark gallery dome
+        const bg = ctx.createLinearGradient(0, 0, 0, h);
+        bg.addColorStop(0, "#1d1b1a");
+        bg.addColorStop(0.45, "#0d0d10");
+        bg.addColorStop(1, "#060608");
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+
+        // Warm overhead key softbox
+        const keyGrad = ctx.createRadialGradient(w * 0.5, h * 0.16, 4, w * 0.5, h * 0.16, w * 0.24);
+        keyGrad.addColorStop(0, "rgba(255, 240, 212, 0.95)");
+        keyGrad.addColorStop(0.4, "rgba(218, 182, 130, 0.38)");
+        keyGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = keyGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Cool gallery rim strip
+        const rimGrad = ctx.createRadialGradient(w * 0.18, h * 0.36, 2, w * 0.18, h * 0.36, w * 0.18);
+        rimGrad.addColorStop(0, "rgba(120, 152, 255, 0.65)");
+        rimGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = rimGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Subtle warm side reflection
+        const sideGrad = ctx.createRadialGradient(w * 0.84, h * 0.44, 2, w * 0.84, h * 0.44, w * 0.15);
+        sideGrad.addColorStop(0, "rgba(201, 164, 106, 0.32)");
+        sideGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = sideGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        const equirect = new THREE.CanvasTexture(canvas);
+        equirect.mapping = THREE.EquirectangularReflectionMapping;
+        equirect.encoding = THREE.sRGBEncoding;
+
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+        const envRT = pmrem.fromEquirectangular(equirect);
+        equirect.dispose();
+        pmrem.dispose();
+        return envRT.texture;
+      }
+
+      /* =======================================================================
+         4. SCENE SETUP (RENDERER, LIGHTING, PODIUM, VOLUMETRIC CONE, PARTICLES)
+         ======================================================================= */
+      const stageEl = document.getElementById("webgl-stage");
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance"
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.18;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      stageEl.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b0b0d);
+      scene.fog = new THREE.FogExp2(0x0b0b0d, 0.082);
+      scene.environment = createStudioEnvironment(renderer);
+
+      const camera = new THREE.PerspectiveCamera(
+        38,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        45
+      );
+      camera.position.set(0, 2.2, 7.6);
+
+      // Generate Procedural Textures
+      const fabricTex = createFabricTextures();
+      const woodTex = createWoodTextures();
+      const metalTex = createBrushedMetalTexture();
+      const particleTex = createSoftParticleTexture();
+      const podiumTex = createPodiumTexture();
+      const contactShadowTex = createContactShadowTexture();
+
+      // Shared Dynamic Materials (tweened smoothly on configurator changes)
+      const initialFabric = FABRICS[state.fabricIndex];
+      const fabricMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(initialFabric.color),
+        map: fabricTex.map,
+        normalMap: fabricTex.normalMap,
+        normalScale: new THREE.Vector2(initialFabric.normalScale, initialFabric.normalScale),
+        roughnessMap: fabricTex.roughnessMap,
+        roughness: initialFabric.roughness,
+        metalness: initialFabric.metalness,
+        envMapIntensity: 0.65
+      });
+
+      const pipingMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(initialFabric.color).multiplyScalar(0.88),
+        map: fabricTex.map,
+        normalMap: fabricTex.normalMap,
+        normalScale: new THREE.Vector2(0.45, 0.45),
+        roughness: initialFabric.roughness,
+        metalness: initialFabric.metalness,
+        envMapIntensity: 0.55
+      });
+
+      const pillowMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(initialFabric.pillowColor),
+        map: fabricTex.map,
+        normalMap: fabricTex.normalMap,
+        normalScale: new THREE.Vector2(initialFabric.normalScale * 0.85, initialFabric.normalScale * 0.85),
+        roughnessMap: fabricTex.roughnessMap,
+        roughness: clamp(initialFabric.roughness - 0.06, 0.35, 0.94),
+        metalness: initialFabric.metalness + 0.03,
+        envMapIntensity: 0.72
+      });
+
+      const initialLeg = LEG_FINISHES[state.legIndex];
+      const legMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(initialLeg.color),
+        map: woodTex.map,
+        bumpMap: woodTex.bumpMap,
+        bumpScale: 0.012,
+        roughness: initialLeg.roughness,
+        metalness: initialLeg.metalness,
+        envMapIntensity: 0.9
+      });
+
+      const brassMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(0xd2ad6e),
+        roughnessMap: metalTex,
+        roughness: 0.28,
+        metalness: 0.92,
+        envMapIntensity: 1.25
+      });
+
+      // Dark subtle reflection material for mirrored floor silhouette
+      const reflectionMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(initialFabric.color).multiplyScalar(0.35),
+        roughness: 0.35,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false
+      });
+
+      // LIGHTING RIG
+      // Low moody ambient + hemisphere
+      const ambientLight = new THREE.AmbientLight(0x1b1a1f, 0.32);
+      scene.add(ambientLight);
+
+      const hemiLight = new THREE.HemisphereLight(0x3a3e4d, 0x0c0b0d, 0.42);
+      scene.add(hemiLight);
+
+      // Strong warm overhead Spotlight (shadows enabled)
+      const spotLight = new THREE.SpotLight(0xfff0d6, 3.6, 18, Math.PI * 0.24, 0.68, 1.35);
+      spotLight.position.set(0.4, 5.4, 1.1);
+      spotLight.castShadow = true;
+      spotLight.shadow.mapSize.width = 2048;
+      spotLight.shadow.mapSize.height = 2048;
+      spotLight.shadow.camera.near = 1.5;
+      spotLight.shadow.camera.far = 11;
+      spotLight.shadow.bias = -0.00045;
+      spotLight.shadow.radius = 3.2;
+      scene.add(spotLight);
+      scene.add(spotLight.target);
+      spotLight.target.position.set(0, 0.35, 0);
+
+      // Cool rim light from behind (#6f8cff)
+      const rimLight = new THREE.SpotLight(0x6f8cff, 1.85, 16, Math.PI * 0.35, 0.85, 1.2);
+      rimLight.position.set(-2.9, 2.7, -3.4);
+      scene.add(rimLight);
+      scene.add(rimLight.target);
+      rimLight.target.position.set(0, 0.45, 0);
+
+      // Subtle warm gallery fill so dark fabrics keep sculpting readability
+      const fillLight = new THREE.PointLight(0xffdfb5, 0.48, 10, 1.8);
+      fillLight.position.set(3.2, 1.6, 2.8);
+      scene.add(fillLight);
+
+      // VOLUMETRIC LIGHT CONE (custom fresnel + vertical fade shader)
+      const coneHeight = 5.45;
+      const coneRadius = 2.65;
+      const coneGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 48, 1, true);
+      coneGeo.translate(0, -coneHeight / 2, 0); // Pivot at apex
+
+      const volumetricMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color(0xf4dec0) },
+          uOpacity: { value: 0.115 },
+          uTime: { value: 0 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vUv = uv;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPos = -mvPosition.xyz;
+            vNormalView = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          uniform float uTime;
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vec3 viewDir = normalize(vViewPos);
+            float fresnel = pow(abs(dot(normalize(vNormalView), viewDir)), 1.9);
+            float topFade = smoothstep(1.0, 0.82, vUv.y);
+            float bottomFade = smoothstep(0.0, 0.48, vUv.y);
+            float shimmer = 0.94 + 0.06 * sin(vUv.y * 8.0 - uTime * 0.55);
+            float alpha = fresnel * topFade * bottomFade * uOpacity * shimmer;
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+
+      const volumetricCone = new THREE.Mesh(coneGeo, volumetricMat);
+      volumetricCone.position.copy(spotLight.position);
+      scene.add(volumetricCone);
+
+      // FLOOR & CIRCULAR GLOSSY PODIUM WITH GOLD RING
+      const galleryFloorGeo = new THREE.PlaneGeometry(36, 36);
+      const galleryFloorMat = new THREE.MeshStandardMaterial({
+        color: 0x08080a,
+        roughness: 0.92,
+        metalness: 0.05
+      });
+      const galleryFloor = new THREE.Mesh(galleryFloorGeo, galleryFloorMat);
+      galleryFloor.rotation.x = -Math.PI / 2;
+      galleryFloor.position.y = -0.14;
+      galleryFloor.receiveShadow = true;
+      scene.add(galleryFloor);
+
+      const podiumGroup = new THREE.Group();
+      scene.add(podiumGroup);
+
+      // Outer dark podium cylinder
+      const podiumRadius = 2.75;
+      const podiumHeight = 0.14;
+      const podiumSideGeo = new THREE.CylinderGeometry(podiumRadius, podiumRadius + 0.04, podiumHeight, 72, 1, true);
+      const podiumSideMat = new THREE.MeshStandardMaterial({
+        color: 0x101014,
+        roughness: 0.42,
+        metalness: 0.35
+      });
+      const podiumSide = new THREE.Mesh(podiumSideGeo, podiumSideMat);
+      podiumSide.position.y = -podiumHeight / 2;
+      podiumSide.receiveShadow = true;
+      podiumGroup.add(podiumSide);
+
+      // Deep matte backing under glossy top so mirror reflection stays subtle
+      const podiumBackGeo = new THREE.CircleGeometry(podiumRadius - 0.01, 72);
+      const podiumBackMat = new THREE.MeshBasicMaterial({ color: 0x070709 });
+      const podiumBack = new THREE.Mesh(podiumBackGeo, podiumBackMat);
+      podiumBack.rotation.x = -Math.PI / 2;
+      podiumBack.position.y = -0.015;
+      podiumGroup.add(podiumBack);
+
+      // Translucent dark obsidian glossy top plane (allows mirrored sofa reflection through)
+      const podiumTopGeo = new THREE.CircleGeometry(podiumRadius, 72);
+      const podiumTopMat = new THREE.MeshStandardMaterial({
+        map: podiumTex,
+        color: 0x1a1a20,
+        roughness: 0.22,
+        metalness: 0.42,
+        envMapIntensity: 0.95,
+        transparent: true,
+        opacity: 0.84
+      });
+      const podiumTop = new THREE.Mesh(podiumTopGeo, podiumTopMat);
+      podiumTop.rotation.x = -Math.PI / 2;
+      podiumTop.position.y = 0.0;
+      podiumTop.receiveShadow = true;
+      podiumGroup.add(podiumTop);
+
+      // Thin champagne gold ring around the podium rim
+      const goldRingGeo = new THREE.TorusGeometry(podiumRadius, 0.012, 16, 128);
+      const goldRingMat = new THREE.MeshStandardMaterial({
+        color: 0xd4ae70,
+        roughness: 0.24,
+        metalness: 0.95,
+        emissive: 0x3b2a10,
+        emissiveIntensity: 0.28,
+        envMapIntensity: 1.4
+      });
+      const goldRing = new THREE.Mesh(goldRingGeo, goldRingMat);
+      goldRing.rotation.x = Math.PI / 2;
+      goldRing.position.y = 0.002;
+      podiumGroup.add(goldRing);
+
+      // Secondary inner hairline gold inlay
+      const innerRingGeo = new THREE.TorusGeometry(podiumRadius - 0.14, 0.004, 12, 128);
+      const innerRing = new THREE.Mesh(innerRingGeo, goldRingMat);
+      innerRing.rotation.x = Math.PI / 2;
+      innerRing.position.y = 0.002;
+      podiumGroup.add(innerRing);
+
+      // Soft contact AO shadow directly under sofa
+      const contactShadowGeo = new THREE.PlaneGeometry(3.2, 1.8);
+      const contactShadowMat = new THREE.MeshBasicMaterial({
+        map: contactShadowTex,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false
+      });
+      const contactShadow = new THREE.Mesh(contactShadowGeo, contactShadowMat);
+      contactShadow.rotation.x = -Math.PI / 2;
+      contactShadow.position.y = 0.004;
+      podiumGroup.add(contactShadow);
+
+      // LIGHT DUST PARTICLES (~300 floating in the spotlight beam)
+      const PARTICLE_COUNT = 300;
+      const particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+      const particleSeeds = new Float32Array(PARTICLE_COUNT * 3);
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const y = 0.15 + Math.random() * 4.7;
+        const maxR = lerp(2.15, 0.35, y / 5.2);
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * maxR;
+
+        particlePositions[i * 3] = Math.cos(angle) * r + 0.12;
+        particlePositions[i * 3 + 1] = y;
+        particlePositions[i * 3 + 2] = Math.sin(angle) * r + 0.15;
+
+        particleSeeds[i * 3] = Math.random() * Math.PI * 2;     // phase
+        particleSeeds[i * 3 + 1] = 0.04 + Math.random() * 0.09; // rise speed
+        particleSeeds[i * 3 + 2] = 0.25 + Math.random() * 0.55; // drift radius
+      }
+
+      const particleGeo = new THREE.BufferGeometry();
+      particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+
+      const particleMat = new THREE.PointsMaterial({
+        map: particleTex,
+        color: 0xf4ddb8,
+        size: 0.055,
+        transparent: true,
+        opacity: 0.52,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true
+      });
+
+      const dustParticles = new THREE.Points(particleGeo, particleMat);
+      scene.add(dustParticles);
+
+      /* =======================================================================
+         5. PROCEDURAL 3D SOFA BUILDER (SOFT ROUNDED GEOMETRY + ORGANIC SLUMP)
+         ======================================================================= */
+
+      /**
+       * Creates a smoothly beveled, UV-mapped rounded box with optional cushion
+       * crown puff and organic slump imperfections so cushions look genuinely soft.
+       */
+      function createSoftRoundedBox(w, h, d, radius, segs, opts = {}) {
+        const r = Math.min(radius, w * 0.46, h * 0.46, d * 0.46);
+        const sx = segs.x || 14;
+        const sy = segs.y || 10;
+        const sz = segs.z || 14;
+
+        const geo = new THREE.BoxGeometry(w, h, d, sx, sy, sz);
+        const pos = geo.attributes.position;
+        const norm = geo.attributes.normal;
+        const uv = geo.attributes.uv;
+
+        const hx = w * 0.5;
+        const hy = h * 0.5;
+        const hz = d * 0.5;
+        const cxMax = hx - r;
+        const cyMax = hy - r;
+        const czMax = hz - r;
+
+        const crown = opts.crown || 0;
+        const frontPuff = opts.frontPuff || 0;
+        const slump = opts.slump || 0;
+        const seed = opts.seed || 1.0;
+        const pinch = opts.pinch || 0;
+
+        for (let i = 0; i < pos.count; i++) {
+          const ox = pos.getX(i);
+          const oy = pos.getY(i);
+          const oz = pos.getZ(i);
+
+          // Project onto analytical rounded box surface
+          const cx = clamp(ox, -cxMax, cxMax);
+          const cy = clamp(oy, -cyMax, cyMax);
+          const cz = clamp(oz, -czMax, czMax);
+
+          let dx = ox - cx;
+          let dy = oy - cy;
+          let dz = oz - cz;
+          const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          let nx, ny, nz;
+          if (len > 1e-6) {
+            nx = dx / len;
+            ny = dy / len;
+            nz = dz / len;
+          } else {
+            nx = norm.getX(i);
+            ny = norm.getY(i);
+            nz = norm.getZ(i);
+          }
+
+          let px = cx + nx * r;
+          let py = cy + ny * r;
+          let pz = cz + nz * r;
+
+          // Normalized local coordinates [-1, 1]
+          const ux = px / Math.max(hx, 0.001);
+          const uy = py / Math.max(hy, 0.001);
+          const uz = pz / Math.max(hz, 0.001);
+
+          // Soft crown puff on top surface
+          if (crown !== 0) {
+            const dome = Math.max(0, 1 - ux * ux * 0.85) * Math.max(0, 1 - uz * uz * 0.85);
+            const topWeight = smoothstepJS(-0.15, 0.9, uy);
+            py += dome * crown * topWeight;
+          }
+
+          // Plumpness along front/back face (great for back cushions)
+          if (frontPuff !== 0) {
+            const bulge = Math.max(0, 1 - ux * ux * 0.82) * Math.max(0, 1 - uy * uy * 0.82);
+            const frontWeight = smoothstepJS(-0.2, 0.9, uz);
+            pz += bulge * frontPuff * frontWeight;
+          }
+
+          // Subtle organic slump & tailored fabric ripple (not CAD-perfect)
+          if (slump !== 0) {
+            const n1 = Math.sin(ux * 3.1 + seed * 4.3) * Math.cos(uz * 2.7 - seed * 2.1);
+            const n2 = Math.sin(ux * 6.4 - uy * 4.1 + seed * 7.2) * 0.45;
+            const centerDip = -Math.max(0, 1 - ux * ux * 1.1) * Math.max(0, 1 - uz * uz * 1.1) * 0.42;
+            const topMask = smoothstepJS(-0.4, 0.85, uy);
+            py += (n1 * 0.55 + n2 * 0.3 + centerDip) * slump * topMask;
+            pz += Math.sin(ux * 4.2 + seed * 3.1) * slump * 0.35;
+          }
+
+          // Slight waist pinch near bottom edges for seated realism
+          if (pinch !== 0) {
+            const midBelt = 1 - Math.abs(uy);
+            px *= 1 + midBelt * pinch;
+            pz *= 1 + midBelt * pinch;
+          }
+
+          pos.setXYZ(i, px, py, pz);
+          norm.setXYZ(i, nx, ny, nz);
+
+          // World-proportional triplanar-like UVs so fabric weave scale matches everywhere
+          const ax = Math.abs(nx);
+          const ay = Math.abs(ny);
+          const az = Math.abs(nz);
+          if (ay >= ax && ay >= az) {
+            uv.setXY(i, px * 0.95, pz * 0.95);
+          } else if (ax >= ay && ax >= az) {
+            uv.setXY(i, pz * 0.95, py * 0.95);
+          } else {
+            uv.setXY(i, px * 0.95, py * 0.95);
+          }
+        }
+
+        pos.needsUpdate = true;
+        norm.needsUpdate = true;
+        uv.needsUpdate = true;
+        return geo;
+      }
+
+      function smoothstepJS(edge0, edge1, x) {
+        const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+        return t * t * (3 - 2 * t);
+      }
+
+      /**
+       * Creates a plump sculptural accent throw pillow with softly pinched edges.
+       */
+      function createThrowPillowGeometry(w, h, thickness, seed = 1) {
+        const geo = new THREE.BoxGeometry(w, h, thickness, 16, 16, 6);
+        const pos = geo.attributes.position;
+        const uv = geo.attributes.uv;
+        const hx = w * 0.5;
+        const hy = h * 0.5;
+        const hz = thickness * 0.5;
+
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const z = pos.getZ(i);
+
+          const ux = x / hx;
+          const uy = y / hy;
+          const uz = z / hz;
+
+          // Plump pillow envelope
+          const r2 = Math.min(1, ux * ux * 0.88 + uy * uy * 0.88);
+          const plump = Math.cos(Math.sqrt(r2) * Math.PI * 0.5);
+          const cornerPinch = 1 - 0.14 * (ux * ux) * (uy * uy);
+
+          // Gravity sag slightly downward
+          const sagY = -0.018 * (1 - ux * ux) * (1 - uy);
+          const organic = Math.sin(ux * 3.8 + seed * 2.7) * Math.cos(uy * 3.4 - seed) * 0.008;
+
+          const px = x * cornerPinch;
+          const py = y * cornerPinch + sagY;
+          const pz = uz * hz * (0.14 + 0.92 * Math.pow(Math.max(0, plump), 0.72)) + organic;
+
+          pos.setXYZ(i, px, py, pz);
+          uv.setXY(i, px * 1.4, py * 1.4);
+        }
+
+        pos.needsUpdate = true;
+        uv.needsUpdate = true;
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      /**
+       * Adds delicate French-seam welt piping around the top perimeter of a cushion.
+       */
+      function createPipingLoop(w, d, yPos, cornerR) {
+        const hw = w * 0.5 - 0.012;
+        const hd = d * 0.5 - 0.012;
+        const r = Math.min(cornerR, hw * 0.4, hd * 0.4);
+        const pts = [];
+        const steps = 6;
+
+        const corners = [
+          { cx: hw - r, cz: hd - r, a0: 0, a1: Math.PI * 0.5 },
+          { cx: -hw + r, cz: hd - r, a0: Math.PI * 0.5, a1: Math.PI },
+          { cx: -hw + r, cz: -hd + r, a0: Math.PI, a1: Math.PI * 1.5 },
+          { cx: hw - r, cz: -hd + r, a0: Math.PI * 1.5, a1: Math.PI * 2 }
+        ];
+
+        corners.forEach((c) => {
+          for (let s = 0; s <= steps; s++) {
+            const a = lerp(c.a0, c.a1, s / steps);
+            pts.push(new THREE.Vector3(c.cx + Math.cos(a) * r, yPos, c.cz + Math.sin(a) * r));
+          }
+        });
+
+        const curve = new THREE.CatmullRomCurve3(pts, true);
+        const geo = new THREE.TubeGeometry(curve, 44, 0.0065, 6, true);
+        return new THREE.Mesh(geo, pipingMaterial);
+      }
+
+      /**
+       * Creates a single tapered hardwood leg with a brushed brass bottom ferrule.
+       */
+      function createTaperedLeg(height = 0.175) {
+        const group = new THREE.Group();
+        const ferruleH = 0.044;
+        const upperH = height - ferruleH;
+
+        const woodGeo = new THREE.CylinderGeometry(0.029, 0.0205, upperH, 20);
+        const woodMesh = new THREE.Mesh(woodGeo, legMaterial);
+        woodMesh.position.y = ferruleH + upperH * 0.5;
+        woodMesh.castShadow = true;
+        woodMesh.receiveShadow = true;
+        group.add(woodMesh);
+
+        const ferruleGeo = new THREE.CylinderGeometry(0.0206, 0.017, ferruleH, 20);
+        const ferruleMesh = new THREE.Mesh(ferruleGeo, brassMaterial);
+        ferruleMesh.position.y = ferruleH * 0.5;
+        ferruleMesh.castShadow = true;
+        ferruleMesh.receiveShadow = true;
+        group.add(ferruleMesh);
+
+        // Subtle brass collar ring at join
+        const collarGeo = new THREE.TorusGeometry(0.0206, 0.0022, 10, 24);
+        const collarMesh = new THREE.Mesh(collarGeo, brassMaterial);
+        collarMesh.rotation.x = Math.PI / 2;
+        collarMesh.position.y = ferruleH;
+        group.add(collarMesh);
+
+        return group;
+      }
+
+      // Main Sofa Pivot (rotates for hero/configure) + Mirror Reflection Pivot
+      const sofaPivot = new THREE.Group();
+      scene.add(sofaPivot);
+
+      const sofaContainer = new THREE.Group();
+      sofaPivot.add(sofaContainer);
+
+      const reflectionContainer = new THREE.Group();
+      reflectionContainer.scale.y = -1;
+      reflectionContainer.position.y = -0.004;
+      sofaPivot.add(reflectionContainer);
+
+      // Dynamic 3D anchor coordinates for Section 4 Hotspots (local to sofaPivot)
+      const hotspotAnchors = {
+        leg: new THREE.Vector3(),
+        ferrule: new THREE.Vector3(),
+        piping: new THREE.Vector3(),
+        plinth: new THREE.Vector3()
+      };
+
+      function disposeGroupChildren(group) {
+        while (group.children.length > 0) {
+          const child = group.children[0];
+          group.remove(child);
+          child.traverse((node) => {
+            if (node.isMesh && node.geometry) {
+              node.geometry.dispose();
+            }
+          });
+        }
+      }
+
+      function addSofaMesh(parent, geo, mat, pos, rot) {
+        const mesh = new THREE.Mesh(geo, mat);
+        if (pos) mesh.position.set(pos[0], pos[1], pos[2]);
+        if (rot) mesh.rotation.set(rot[0], rot[1], rot[2]);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function buildSofaGeometry(sizeId) {
+        disposeGroupChildren(sofaContainer);
+        disposeGroupChildren(reflectionContainer);
+
+        const legH = 0.175;
+        const baseH = 0.165;
+        const baseY = legH + baseH * 0.5;
+        const depth = 0.96;
+        const armW = 0.19;
+        const armH = 0.44;
+        const backFrameD = 0.16;
+        const backFrameH = 0.50;
+        const seatH = 0.145;
+        const seatY = legH + baseH + seatH * 0.46;
+
+        const isTwo = sizeId === "2-seater";
+        const isCorner = sizeId === "corner";
+
+        const totalW = isTwo ? 1.88 : isCorner ? 2.66 : 2.46;
+        const innerW = totalW - armW * 2;
+        const seatCount = isTwo ? 2 : 3;
+        const seatD = depth - backFrameD - 0.02;
+        const chaiseExtraD = isCorner ? 0.72 : 0;
+
+        // Update contact shadow scale to fit silhouette
+        contactShadow.scale.set(
+          isTwo ? 0.84 : isCorner ? 1.15 : 1.04,
+          isCorner ? 1.48 : 1.0,
+          1
+        );
+        contactShadow.position.z = isCorner ? 0.2 : 0;
+
+        // Center offset so Corner sectional feels balanced on the podium
+        const centerShiftZ = isCorner ? -0.18 : 0;
+        sofaContainer.position.z = centerShiftZ;
+        reflectionContainer.position.z = centerShiftZ;
+
+        // 1. BASE FRAME (sculpted upholstered plinth)
+        const baseGeo = createSoftRoundedBox(totalW, baseH, depth, 0.045, { x: 16, y: 6, z: 12 }, { pinch: 0.015 });
+        addSofaMesh(sofaContainer, baseGeo, fabricMaterial, [0, baseY, 0]);
+
+        // Subtle recessed dark shadow trim under the plinth
+        const trimGeo = createSoftRoundedBox(totalW - 0.08, 0.032, depth - 0.08, 0.012, { x: 8, y: 3, z: 8 });
+        addSofaMesh(sofaContainer, trimGeo, legMaterial, [0, legH + 0.008, 0]);
+
+        // 2. BACK STRUCTURAL SHELL
+        const backShellGeo = createSoftRoundedBox(
+          totalW - 0.02,
+          backFrameH,
+          backFrameD,
+          0.055,
+          { x: 16, y: 10, z: 8 },
+          { crown: 0.012 }
+        );
+        addSofaMesh(sofaContainer, backShellGeo, fabricMaterial, [
+          0,
+          legH + baseH + backFrameH * 0.46,
+          -depth * 0.5 + backFrameD * 0.5 + 0.01
+        ]);
+
+        // 3. SCULPTED ROUNDED ARMS
+        const leftArmGeo = createSoftRoundedBox(
+          armW,
+          armH,
+          depth - 0.01,
+          0.068,
+          { x: 10, y: 10, z: 14 },
+          { crown: 0.016, slump: 0.004, seed: 2.1 }
+        );
+        addSofaMesh(sofaContainer, leftArmGeo, fabricMaterial, [
+          -totalW * 0.5 + armW * 0.5,
+          legH + baseH + armH * 0.44,
+          0
+        ]);
+
+        const rightArmLen = isCorner ? depth + chaiseExtraD - 0.01 : depth - 0.01;
+        const rightArmGeo = createSoftRoundedBox(
+          armW,
+          armH,
+          rightArmLen,
+          0.068,
+          { x: 10, y: 10, z: 16 },
+          { crown: 0.016, slump: 0.004, seed: 3.4 }
+        );
+        addSofaMesh(sofaContainer, rightArmGeo, fabricMaterial, [
+          totalW * 0.5 - armW * 0.5,
+          legH + baseH + armH * 0.44,
+          isCorner ? chaiseExtraD * 0.5 : 0
+        ]);
+
+        // Corner Chaise Extension Base
+        const cushW = (innerW - 0.018 * (seatCount - 1)) / seatCount;
+        if (isCorner) {
+          const chaiseBaseW = cushW + armW + 0.04;
+          const chaiseBaseGeo = createSoftRoundedBox(
+            chaiseBaseW,
+            baseH,
+            chaiseExtraD + 0.14,
+            0.045,
+            { x: 12, y: 6, z: 12 },
+            { pinch: 0.012 }
+          );
+          addSofaMesh(sofaContainer, chaiseBaseGeo, fabricMaterial, [
+            totalW * 0.5 - chaiseBaseW * 0.5,
+            baseY,
+            depth * 0.5 + chaiseExtraD * 0.5 - 0.07
+          ]);
+
+          const chaiseTrimGeo = createSoftRoundedBox(chaiseBaseW - 0.08, 0.032, chaiseExtraD + 0.04, 0.012, { x: 6, y: 3, z: 6 });
+          addSofaMesh(sofaContainer, chaiseTrimGeo, legMaterial, [
+            totalW * 0.5 - chaiseBaseW * 0.5,
+            legH + 0.008,
+            depth * 0.5 + chaiseExtraD * 0.5 - 0.05
+          ]);
+        }
+
+        // 4. SEAT CUSHIONS + PIPING (with organic slump & subtle variation)
+        for (let i = 0; i < seatCount; i++) {
+          const isChaiseSeat = isCorner && i === seatCount - 1;
+          const cDepth = isChaiseSeat ? seatD + chaiseExtraD : seatD;
+          const cx = -innerW * 0.5 + cushW * 0.5 + i * (cushW + 0.018);
+          const cz = backFrameD * 0.5 + (isChaiseSeat ? chaiseExtraD * 0.5 : 0) + 0.025;
+
+          const seatGeo = createSoftRoundedBox(
+            cushW,
+            seatH,
+            cDepth,
+            0.056,
+            { x: 14, y: 8, z: isChaiseSeat ? 20 : 14 },
+            {
+              crown: 0.024,
+              slump: 0.012,
+              pinch: 0.018,
+              seed: 1.5 + i * 2.3
+            }
+          );
+          const seatMesh = addSofaMesh(
+            sofaContainer,
+            seatGeo,
+            fabricMaterial,
+            [cx, seatY + (i === 1 ? -0.003 : 0.002), cz],
+            [0.012, (i - 1) * 0.004, 0]
+          );
+
+          // French-seam welt piping on top edge of each seat cushion
+          const pipe = createPipingLoop(cushW - 0.02, cDepth - 0.02, seatH * 0.45, 0.055);
+          seatMesh.add(pipe);
+        }
+
+        // 5. BACK CUSHIONS (soft, slightly reclined, organic slump)
+        const backCushH = 0.43;
+        const backCushD = 0.19;
+        for (let i = 0; i < seatCount; i++) {
+          const cx = -innerW * 0.5 + cushW * 0.5 + i * (cushW + 0.018);
+          const backGeo = createSoftRoundedBox(
+            cushW - 0.01,
+            backCushH,
+            backCushD,
+            0.068,
+            { x: 14, y: 12, z: 8 },
+            {
+              frontPuff: 0.032,
+              crown: 0.015,
+              slump: 0.014,
+              seed: 5.1 + i * 1.9
+            }
+          );
+
+          const slightTilt = -0.19 + (i === 1 ? -0.015 : 0.008);
+          addSofaMesh(
+            sofaContainer,
+            backGeo,
+            fabricMaterial,
+            [cx, legH + baseH + seatH + backCushH * 0.41, -depth * 0.5 + backFrameD + backCushD * 0.46],
+            [slightTilt, (i - 1) * 0.015, (i === 0 ? 0.012 : i === seatCount - 1 ? -0.012 : 0)]
+          );
+        }
+
+        // 6. ACCENT THROW PILLOWS (2 on 2/3-seater, 3 on Corner)
+        const pillowGeo1 = createThrowPillowGeometry(0.41, 0.39, 0.145, 1.3);
+        addSofaMesh(
+          sofaContainer,
+          pillowGeo1,
+          pillowMaterial,
+          [-innerW * 0.5 + 0.21, seatY + 0.22, -0.08],
+          [-0.26, 0.44, 0.14]
+        );
+
+        const pillowGeo2 = createThrowPillowGeometry(0.42, 0.40, 0.15, 4.7);
+        addSofaMesh(
+          sofaContainer,
+          pillowGeo2,
+          pillowMaterial,
+          [innerW * 0.5 - 0.22, seatY + 0.225, -0.07],
+          [-0.24, -0.48, -0.13]
+        );
+
+        if (isCorner) {
+          const pillowGeo3 = createThrowPillowGeometry(0.36, 0.34, 0.13, 8.2);
+          addSofaMesh(
+            sofaContainer,
+            pillowGeo3,
+            pillowMaterial,
+            [innerW * 0.5 - 0.18, seatY + 0.20, 0.38],
+            [-0.18, -1.25, -0.12]
+          );
+        }
+
+        // 7. TAPERED WOODEN LEGS WITH BRUSHED BRASS FERRULES
+        const legOffsetX = totalW * 0.5 - 0.16;
+        const legOffsetZ = depth * 0.5 - 0.14;
+        const legConfigs = [
+          { x: -legOffsetX, z: legOffsetZ, rx: 0.07, rz: 0.07 },
+          { x: -legOffsetX, z: -legOffsetZ, rx: -0.07, rz: 0.07 },
+          { x: legOffsetX, z: -legOffsetZ, rx: -0.07, rz: -0.07 }
+        ];
+
+        if (isCorner) {
+          const chaiseFrontZ = depth * 0.5 + chaiseExtraD - 0.14;
+          legConfigs.push(
+            { x: legOffsetX, z: chaiseFrontZ, rx: 0.07, rz: -0.07 },
+            { x: totalW * 0.5 - (cushW + armW) + 0.12, z: chaiseFrontZ, rx: 0.07, rz: 0.05 },
+            { x: 0, z: legOffsetZ, rx: 0.05, rz: 0 }
+          );
+        } else {
+          legConfigs.push({ x: legOffsetX, z: legOffsetZ, rx: 0.07, rz: -0.07 });
+        }
+
+        legConfigs.forEach((lc) => {
+          const leg = createTaperedLeg(legH);
+          leg.position.set(lc.x, 0, lc.z);
+          leg.rotation.set(lc.rx, 0, lc.rz);
+          sofaContainer.add(leg);
+        });
+
+        // 8. UPDATE 3D HOTSPOT ANCHORS (Section 4 Details)
+        hotspotAnchors.leg.set(-legOffsetX - 0.02, legH * 0.65, legOffsetZ + centerShiftZ);
+        hotspotAnchors.ferrule.set(-legOffsetX - 0.02, 0.025, legOffsetZ + centerShiftZ);
+        hotspotAnchors.piping.set(-innerW * 0.25, seatY + seatH * 0.48, depth * 0.45 + centerShiftZ);
+        hotspotAnchors.plinth.set(0.18, baseY, depth * 0.5 + centerShiftZ);
+
+        // 9. LIGHTWEIGHT MIRROR REFLECTION SILHOUETTE UNDER PODIUM GLASS
+        const reflBase = new THREE.Mesh(baseGeo.clone(), reflectionMaterial);
+        reflBase.position.set(0, baseY, 0);
+        reflectionContainer.add(reflBase);
+
+        legConfigs.forEach((lc) => {
+          const rLegGeo = new THREE.CylinderGeometry(0.029, 0.017, legH, 10);
+          const rLeg = new THREE.Mesh(rLegGeo, reflectionMaterial);
+          rLeg.position.set(lc.x, legH * 0.5, lc.z);
+          rLeg.rotation.set(lc.rx, 0, lc.rz);
+          reflectionContainer.add(rLeg);
+        });
+      }
+
+      // Build initial 3-Seater sofa
+      buildSofaGeometry(SIZES[state.sizeIndex].id);
+
+      // Animated size transition state
+      const sizeAnim = {
+        active: false,
+        phase: "idle", // "out" -> rebuild -> "in"
+        t: 0,
+        pendingSizeId: null
+      };
+
+      function triggerSizeTransition(newSizeId) {
+        if (prefersReducedMotion) {
+          buildSofaGeometry(newSizeId);
+          return;
+        }
+        sizeAnim.active = true;
+        sizeAnim.phase = "out";
+        sizeAnim.t = 0;
+        sizeAnim.pendingSizeId = newSizeId;
+      }
+
+      /* =======================================================================
+         6. SCROLL TIMELINE & CINEMATIC CAMERA KEYFRAMES
+         ======================================================================= */
+      // 6 Keyframes corresponding to the 6 scroll sections (normalized t = 0..1)
+      function getKeyframes() {
+        const isMobile = window.innerWidth <= 960;
+        return [
+          // 0: HERO — Far away in nocturnal gallery, dramatic low-horizon presence
+          {
+            t: 0.0,
+            camPos: new THREE.Vector3(0.0, 1.55, isMobile ? 7.9 : 6.7),
+            lookAt: new THREE.Vector3(0.0, 0.52, 0.0),
+            sofaYaw: 0.16,
+            spotIntensity: 3.1,
+            spotAngle: 0.36
+          },
+          // 1: CRAFT — Sweeps close to the cushion stitching & bouclé weave texture
+          {
+            t: 0.20,
+            camPos: new THREE.Vector3(isMobile ? 0.95 : 1.48, 1.06, isMobile ? 1.82 : 1.52),
+            lookAt: new THREE.Vector3(isMobile ? -0.05 : -0.36, 0.56, 0.18),
+            sofaYaw: -0.22,
+            spotIntensity: 4.1,
+            spotAngle: 0.44
+          },
+          // 2: COMFORT — Crisp architectural side profile showing generous seat depth
+          {
+            t: 0.40,
+            camPos: new THREE.Vector3(isMobile ? -3.4 : -3.25, 0.92, isMobile ? 1.45 : 0.72),
+            lookAt: new THREE.Vector3(0.0, 0.46, isMobile ? 0.25 : 0.55),
+            sofaYaw: 0.04,
+            spotIntensity: 3.8,
+            spotAngle: 0.48
+          },
+          // 3: DETAILS — Low sculptural angle on the tapered legs, brass ferrules & plinth
+          {
+            t: 0.60,
+            camPos: new THREE.Vector3(isMobile ? -1.95 : -1.75, 0.56, isMobile ? 2.55 : 2.18),
+            lookAt: new THREE.Vector3(-0.32, 0.28, 0.25),
+            sofaYaw: 0.12,
+            spotIntensity: 3.9,
+            spotAngle: 0.50
+          },
+          // 4: CONFIGURE — Balanced 3/4 hero angle framed next to glass configurator panel
+          {
+            t: 0.80,
+            camPos: new THREE.Vector3(isMobile ? 2.35 : 2.65, isMobile ? 1.75 : 1.52, isMobile ? 4.45 : 3.45),
+            lookAt: new THREE.Vector3(isMobile ? 0.0 : 0.68, isMobile ? 0.16 : 0.46, 0.0),
+            sofaYaw: -0.18,
+            spotIntensity: 4.2,
+            spotAngle: 0.54
+          },
+          // 5: CONTACT / FOOTER — Serene elevated nocturnal pullback
+          {
+            t: 1.0,
+            camPos: new THREE.Vector3(-0.9, 2.35, isMobile ? 6.9 : 5.9),
+            lookAt: new THREE.Vector3(0.0, 0.28, 0.0),
+            sofaYaw: 0.34,
+            spotIntensity: 3.2,
+            spotAngle: 0.46
+          }
+        ];
+      }
+
+      let keyframes = getKeyframes();
+
+      const camCurrentPos = keyframes[0].camPos.clone();
+      const camCurrentLook = keyframes[0].lookAt.clone();
+      const camTargetPos = new THREE.Vector3();
+      const camTargetLook = new THREE.Vector3();
+      const tempVec = new THREE.Vector3();
+
+      function sampleTimeline(progress) {
+        const p = clamp(progress, 0, 1);
+        let k0 = keyframes[0];
+        let k1 = keyframes[keyframes.length - 1];
+
+        for (let i = 0; i < keyframes.length - 1; i++) {
+          if (p >= keyframes[i].t && p <= keyframes[i + 1].t) {
+            k0 = keyframes[i];
+            k1 = keyframes[i + 1];
+            break;
+          }
+        }
+
+        const span = Math.max(0.0001, k1.t - k0.t);
+        const localT = easeInOutCubic(clamp((p - k0.t) / span, 0, 1));
+
+        camTargetPos.lerpVectors(k0.camPos, k1.camPos, localT);
+        camTargetLook.lerpVectors(k0.lookAt, k1.lookAt, localT);
+
+        return {
+          sofaYaw: lerp(k0.sofaYaw, k1.sofaYaw, localT),
+          spotIntensity: lerp(k0.spotIntensity, k1.spotIntensity, localT),
+          spotAngle: lerp(k0.spotAngle, k1.spotAngle, localT)
+        };
+      }
+
+      /* =======================================================================
+         7. CONFIGURATOR, MATERIAL TWEENING, CART & QUOTE MODAL
+         ======================================================================= */
+      const materialTween = {
+        active: false,
+        t: 1,
+        duration: 0.6,
+        fromColor: new THREE.Color(initialFabric.color),
+        toColor: new THREE.Color(initialFabric.color),
+        fromPillow: new THREE.Color(initialFabric.pillowColor),
+        toPillow: new THREE.Color(initialFabric.pillowColor),
+        fromRough: initialFabric.roughness,
+        toRough: initialFabric.roughness,
+        fromMetal: initialFabric.metalness,
+        toMetal: initialFabric.metalness,
+        fromNormal: initialFabric.normalScale,
+        toNormal: initialFabric.normalScale
+      };
+
+      const legTween = {
+        active: false,
+        t: 1,
+        duration: 0.45,
+        fromColor: new THREE.Color(initialLeg.color),
+        toColor: new THREE.Color(initialLeg.color),
+        fromRough: initialLeg.roughness,
+        toRough: initialLeg.roughness,
+        fromMetal: initialLeg.metalness,
+        toMetal: initialLeg.metalness
+      };
+
+      function calculateCurrentPrice() {
+        return (
+          SIZES[state.sizeIndex].basePrice +
+          FABRICS[state.fabricIndex].priceDelta +
+          LEG_FINISHES[state.legIndex].priceDelta
+        );
+      }
+
+      function getCurrentConfigSummary() {
+        const size = SIZES[state.sizeIndex];
+        const fabric = FABRICS[state.fabricIndex];
+        const leg = LEG_FINISHES[state.legIndex];
+        return `${size.name} · ${fabric.name} · پایه‌های ${leg.short}`;
+      }
+
+      function selectFabric(index) {
+        if (index === state.fabricIndex) return;
+        state.fabricIndex = index;
+        const fab = FABRICS[index];
+
+        materialTween.fromColor.copy(fabricMaterial.color);
+        materialTween.toColor.set(fab.color);
+        materialTween.fromPillow.copy(pillowMaterial.color);
+        materialTween.toPillow.set(fab.pillowColor);
+        materialTween.fromRough = fabricMaterial.roughness;
+        materialTween.toRough = fab.roughness;
+        materialTween.fromMetal = fabricMaterial.metalness;
+        materialTween.toMetal = fab.metalness;
+        materialTween.fromNormal = fabricMaterial.normalScale.x;
+        materialTween.toNormal = fab.normalScale;
+        materialTween.t = prefersReducedMotion ? 1 : 0;
+        materialTween.active = true;
+
+        if (prefersReducedMotion) applyMaterialTween(1);
+
+        updateConfiguratorUI();
+      }
+
+      function applyMaterialTween(eased) {
+        fabricMaterial.color.lerpColors(materialTween.fromColor, materialTween.toColor, eased);
+        pipingMaterial.color.copy(fabricMaterial.color).multiplyScalar(0.88);
+        pillowMaterial.color.lerpColors(materialTween.fromPillow, materialTween.toPillow, eased);
+        reflectionMaterial.color.copy(fabricMaterial.color).multiplyScalar(0.35);
+
+        const r = lerp(materialTween.fromRough, materialTween.toRough, eased);
+        const m = lerp(materialTween.fromMetal, materialTween.toMetal, eased);
+        const n = lerp(materialTween.fromNormal, materialTween.toNormal, eased);
+
+        fabricMaterial.roughness = r;
+        fabricMaterial.metalness = m;
+        fabricMaterial.normalScale.set(n, n);
+        pipingMaterial.roughness = r;
+        pillowMaterial.roughness = clamp(r - 0.06, 0.35, 0.94);
+        pillowMaterial.normalScale.set(n * 0.85, n * 0.85);
+      }
+
+      function selectLegFinish(index) {
+        if (index === state.legIndex) return;
+        state.legIndex = index;
+        const leg = LEG_FINISHES[index];
+
+        legMaterial.map = leg.useWood ? woodTex.map : metalTex;
+        legMaterial.bumpMap = leg.useWood ? woodTex.bumpMap : metalTex;
+        legMaterial.bumpScale = leg.useWood ? 0.012 : 0.004;
+        legMaterial.needsUpdate = true;
+
+        legTween.fromColor.copy(legMaterial.color);
+        legTween.toColor.set(leg.color);
+        legTween.fromRough = legMaterial.roughness;
+        legTween.toRough = leg.roughness;
+        legTween.fromMetal = legMaterial.metalness;
+        legTween.toMetal = leg.metalness;
+        legTween.t = prefersReducedMotion ? 1 : 0;
+        legTween.active = true;
+
+        if (prefersReducedMotion) applyLegTween(1);
+
+        updateConfiguratorUI();
+      }
+
+      function applyLegTween(eased) {
+        legMaterial.color.lerpColors(legTween.fromColor, legTween.toColor, eased);
+        legMaterial.roughness = lerp(legTween.fromRough, legTween.toRough, eased);
+        legMaterial.metalness = lerp(legTween.fromMetal, legTween.toMetal, eased);
+      }
+
+      function selectSize(index) {
+        if (index === state.sizeIndex) return;
+        state.sizeIndex = index;
+        triggerSizeTransition(SIZES[index].id);
+        updateConfiguratorUI();
+      }
+
+      // Build Configurator DOM Controls
+      const swatchGridEl = document.getElementById("swatch-grid");
+      const legControlsEl = document.getElementById("leg-controls");
+      const sizeControlsEl = document.getElementById("size-controls");
+      const fabricNameEl = document.getElementById("fabric-name");
+      const legNameEl = document.getElementById("leg-name");
+      const sizeNameEl = document.getElementById("size-name");
+      const specWidthEl = document.getElementById("spec-width");
+      const specDepthEl = document.getElementById("spec-depth");
+      const livePriceEl = document.getElementById("live-price");
+
+      FABRICS.forEach((fab, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "swatch-btn" + (idx === state.fabricIndex ? " active" : "");
+        btn.setAttribute("role", "radio");
+        btn.setAttribute("aria-checked", String(idx === state.fabricIndex));
+        btn.setAttribute("aria-label", `${fab.name} (${fab.priceDelta ? "+" + fab.priceDelta.toLocaleString("fa-IR") + " دلار" : "پایه استاندارد"})`);
+        btn.title = fab.name;
+        btn.innerHTML = `<span class="swatch-fill" style="--swatch-color:${fab.color}"></span>`;
+        btn.addEventListener("click", () => selectFabric(idx));
+        swatchGridEl.appendChild(btn);
+      });
+
+      LEG_FINISHES.forEach((leg, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "seg-btn" + (idx === state.legIndex ? " active" : "");
+        btn.setAttribute("role", "radio");
+        btn.setAttribute("aria-checked", String(idx === state.legIndex));
+        btn.innerHTML = `
+          <span class="leg-dot" style="background:${leg.dotColor}"></span>
+          <span>${leg.short}</span>
+          <span class="seg-sub">${leg.priceDelta ? "+" + leg.priceDelta.toLocaleString("fa-IR") + " دلار" : "پایه"}</span>
+        `;
+        btn.addEventListener("click", () => selectLegFinish(idx));
+        legControlsEl.appendChild(btn);
+      });
+
+      SIZES.forEach((sz, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "seg-btn" + (idx === state.sizeIndex ? " active" : "");
+        btn.setAttribute("role", "radio");
+        btn.setAttribute("aria-checked", String(idx === state.sizeIndex));
+        btn.innerHTML = `
+          <span>${sz.label}</span>
+          <span class="seg-sub">${sz.widthCm.toLocaleString("fa-IR")} سانتی‌متر</span>
+        `;
+        btn.addEventListener("click", () => selectSize(idx));
+        sizeControlsEl.appendChild(btn);
+      });
+
+      function updateConfiguratorUI() {
+        const fab = FABRICS[state.fabricIndex];
+        const leg = LEG_FINISHES[state.legIndex];
+        const sz = SIZES[state.sizeIndex];
+
+        fabricNameEl.textContent = fab.name;
+        legNameEl.textContent = leg.name;
+        sizeNameEl.textContent = `${sz.name} · ${sz.widthCm.toLocaleString("fa-IR")} سانتی‌متر`;
+        specWidthEl.textContent = `${sz.widthCm.toLocaleString("fa-IR")} سانتی‌متر`;
+        specDepthEl.textContent = `${sz.depthCm.toLocaleString("fa-IR")} سانتی‌متر`;
+
+        Array.from(swatchGridEl.children).forEach((el, i) => {
+          const active = i === state.fabricIndex;
+          el.classList.toggle("active", active);
+          el.setAttribute("aria-checked", String(active));
+        });
+
+        Array.from(legControlsEl.children).forEach((el, i) => {
+          const active = i === state.legIndex;
+          el.classList.toggle("active", active);
+          el.setAttribute("aria-checked", String(active));
+        });
+
+        Array.from(sizeControlsEl.children).forEach((el, i) => {
+          const active = i === state.sizeIndex;
+          el.classList.toggle("active", active);
+          el.setAttribute("aria-checked", String(active));
+        });
+
+        state.targetPrice = calculateCurrentPrice();
+        if (prefersReducedMotion) {
+          state.displayedPrice = state.targetPrice;
+          livePriceEl.textContent = formatUSD(state.displayedPrice);
+        }
+      }
+
+      updateConfiguratorUI();
+
+      // Mobile Bottom Sheet Collapse Toggle
+      const configPanelEl = document.getElementById("configurator-panel");
+      document.getElementById("sheet-handle").addEventListener("click", () => {
+        configPanelEl.classList.toggle("collapsed");
+      });
+
+      // Add to Cart & Atelier Bag
+      const cartPillBtn = document.getElementById("cart-pill-btn");
+      const cartCountEl = document.getElementById("cart-count");
+      const cartToastEl = document.getElementById("cart-toast");
+      const cartToastTextEl = document.getElementById("cart-toast-text");
+      const cartModalEl = document.getElementById("cart-modal");
+      const cartItemsListEl = document.getElementById("cart-items-list");
+      const cartTotalPriceEl = document.getElementById("cart-total-price");
+      let toastTimer = null;
+
+      function showToast(title, subtitle) {
+        cartToastTextEl.innerHTML = `${title}<span>${subtitle}</span>`;
+        cartToastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => cartToastEl.classList.remove("show"), 3200);
+      }
+
+      function renderCartUI() {
+        cartCountEl.textContent = String(state.cart.length);
+        cartPillBtn.classList.toggle("has-items", state.cart.length > 0);
+
+        cartItemsListEl.innerHTML = "";
+        let total = 0;
+
+        if (state.cart.length === 0) {
+          cartItemsListEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.88rem;">سبد سفارش شما در حال حاضر خالی است.</p>`;
+        } else {
+          state.cart.forEach((item, idx) => {
+            total += item.price;
+            const row = document.createElement("div");
+            row.className = "cart-item-row";
+            row.innerHTML = `
+              <div class="cart-item-info">
+                <strong>کاناپه نوکتورن — ${item.size}</strong>
+                <span>${item.fabric} &middot; پایه‌های ${item.leg}</span>
+              </div>
+              <div class="cart-item-right">
+                <span>${formatUSD(item.price)}</span>
+                <button type="button" class="cart-remove" data-remove-idx="${idx}">حذف</button>
+              </div>
+            `;
+            cartItemsListEl.appendChild(row);
+          });
+        }
+        cartTotalPriceEl.textContent = formatUSD(total);
+      }
+
+      cartItemsListEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-idx]");
+        if (!btn) return;
+        const idx = Number(btn.getAttribute("data-remove-idx"));
+        state.cart.splice(idx, 1);
+        renderCartUI();
+      });
+
+      document.getElementById("add-to-cart-btn").addEventListener("click", () => {
+        const item = {
+          size: SIZES[state.sizeIndex].name,
+          fabric: FABRICS[state.fabricIndex].name,
+          leg: LEG_FINISHES[state.legIndex].short,
+          price: calculateCurrentPrice()
+        };
+        state.cart.push(item);
+        renderCartUI();
+        showToast("به سبد سفارش اضافه شد", `${item.size} · ${item.fabric} (${formatUSD(item.price)})`);
+      });
+
+      function openModal(el) {
+        el.classList.add("open");
+        el.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeModal(el) {
+        el.classList.remove("open");
+        el.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+      }
+
+      cartPillBtn.addEventListener("click", () => {
+        renderCartUI();
+        openModal(cartModalEl);
+      });
+
+      document.getElementById("cart-modal-close").addEventListener("click", () => closeModal(cartModalEl));
+      cartModalEl.addEventListener("click", (e) => {
+        if (e.target === cartModalEl) closeModal(cartModalEl);
+      });
+
+      // Quote Modal & Validation
+      const quoteModalEl = document.getElementById("quote-modal");
+      const quoteFormEl = document.getElementById("quote-form");
+      const quoteFormWrapEl = document.getElementById("quote-form-wrap");
+      const quoteSuccessEl = document.getElementById("quote-success");
+      const modalConfigSummaryEl = document.getElementById("modal-config-summary");
+
+      function openQuoteModal() {
+        quoteFormWrapEl.style.display = "block";
+        quoteSuccessEl.classList.remove("visible");
+        quoteFormEl.reset();
+        quoteFormEl.querySelectorAll(".form-field").forEach((f) => f.classList.remove("invalid"));
+
+        const summary = getCurrentConfigSummary();
+        const price = formatUSD(calculateCurrentPrice());
+        modalConfigSummaryEl.innerHTML = `<span>انتخاب شما:</span> ${summary} &middot; <span>${price}</span>`;
+        openModal(quoteModalEl);
+        setTimeout(() => document.getElementById("q-name").focus(), 120);
+      }
+
+      document.getElementById("request-quote-btn").addEventListener("click", openQuoteModal);
+      document.getElementById("footer-quote-btn").addEventListener("click", openQuoteModal);
+      document.getElementById("cart-checkout-btn").addEventListener("click", () => {
+        closeModal(cartModalEl);
+        openQuoteModal();
+      });
+      document.getElementById("quote-modal-close").addEventListener("click", () => closeModal(quoteModalEl));
+      document.getElementById("quote-done-btn").addEventListener("click", () => closeModal(quoteModalEl));
+      quoteModalEl.addEventListener("click", (e) => {
+        if (e.target === quoteModalEl) closeModal(quoteModalEl);
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (quoteModalEl.classList.contains("open")) closeModal(quoteModalEl);
+          if (cartModalEl.classList.contains("open")) closeModal(cartModalEl);
+        }
+      });
+
+      quoteFormEl.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const nameInput = document.getElementById("q-name");
+        const emailInput = document.getElementById("q-email");
+        const phoneInput = document.getElementById("q-phone");
+        const msgInput = document.getElementById("q-message");
+
+        let valid = true;
+
+        const nameOk = nameInput.value.trim().length >= 2;
+        document.getElementById("field-name").classList.toggle("invalid", !nameOk);
+        if (!nameOk) valid = false;
+
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailInput.value.trim());
+        document.getElementById("field-email").classList.toggle("invalid", !emailOk);
+        if (!emailOk) valid = false;
+
+        const phoneDigits = phoneInput.value.replace(/\D/g, "");
+        const phoneOk = phoneDigits.length >= 7;
+        document.getElementById("field-phone").classList.toggle("invalid", !phoneOk);
+        if (!phoneOk) valid = false;
+
+        const msgOk = msgInput.value.length <= 1000;
+        document.getElementById("field-message").classList.toggle("invalid", !msgOk);
+        if (!msgOk) valid = false;
+
+        if (!valid) return;
+
+        document.getElementById("success-client-name").textContent = nameInput.value.trim().split(" ")[0] || "مهمان گرامی";
+        document.getElementById("success-config-text").textContent = `کاناپه نوکتورن (${getCurrentConfigSummary()})`;
+        quoteFormWrapEl.style.display = "none";
+
+        // Re-trigger SVG stroke animation
+        const svg = quoteSuccessEl.querySelector("svg");
+        const clone = svg.cloneNode(true);
+        svg.parentNode.replaceChild(clone, svg);
+        quoteSuccessEl.classList.add("visible");
+      });
+
+      /* =======================================================================
+         8. 3D HOTSPOTS (SECTION 4) & CONFIGURE-ONLY ORBIT CONTROLS
+         ======================================================================= */
+      const hotspotsLayer = document.getElementById("hotspots-layer");
+      const hotspotElements = {};
+
+      HOTSPOT_DEFS.forEach((def) => {
+        const wrap = document.createElement("div");
+        wrap.className = "hotspot";
+        wrap.innerHTML = `
+          <button type="button" class="hotspot-btn" aria-label="${def.title}" aria-expanded="false"></button>
+          <div class="hotspot-tooltip" role="tooltip">
+            <h4>${def.title}</h4>
+            <p>${def.desc}</p>
+          </div>
+        `;
+        const btn = wrap.querySelector(".hotspot-btn");
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const wasOpen = wrap.classList.contains("open");
+          Object.values(hotspotElements).forEach((el) => {
+            el.classList.remove("open");
+            el.querySelector(".hotspot-btn").setAttribute("aria-expanded", "false");
+          });
+          if (!wasOpen) {
+            wrap.classList.add("open");
+            btn.setAttribute("aria-expanded", "true");
+          }
+        });
+        hotspotsLayer.appendChild(wrap);
+        hotspotElements[def.id] = wrap;
+      });
+
+      document.addEventListener("click", () => {
+        Object.values(hotspotElements).forEach((el) => {
+          el.classList.remove("open");
+          el.querySelector(".hotspot-btn").setAttribute("aria-expanded", "false");
+        });
+      });
+
+      function updateHotspotPositions() {
+        if (!state.inDetails) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        HOTSPOT_DEFS.forEach((def) => {
+          const anchor = hotspotAnchors[def.id];
+          tempVec.copy(anchor);
+          sofaPivot.localToWorld(tempVec);
+          tempVec.project(camera);
+
+          const el = hotspotElements[def.id];
+          if (tempVec.z > 1) {
+            el.style.opacity = "0";
+            return;
+          }
+          const x = (tempVec.x * 0.5 + 0.5) * w;
+          const y = (-tempVec.y * 0.5 + 0.5) * h;
+
+          el.style.opacity = "1";
+          el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+          el.classList.toggle("align-left", x > w - 270);
+        });
+      }
+
+      // Orbit Drag Controls (strictly enabled ONLY in Section 5: Configure)
+      const orbitSurface = document.getElementById("orbit-surface");
+
+      orbitSurface.addEventListener("pointerdown", (e) => {
+        if (!state.inConfigure) return;
+        state.isDragging = true;
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+        orbitSurface.classList.add("dragging");
+        document.body.classList.add("cursor-drag");
+        if (orbitSurface.setPointerCapture) {
+          try { orbitSurface.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        // Track normalized mouse for hero parallax
+        state.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        state.mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+
+        if (!state.isDragging || !state.inConfigure) return;
+        const dx = e.clientX - state.dragStartX;
+        const dy = e.clientY - state.dragStartY;
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+
+        state.orbitYawTarget += dx * 0.0085;
+        state.orbitPitchTarget = clamp(state.orbitPitchTarget + dy * 0.0045, -0.32, 0.45);
+      });
+
+      function endDrag() {
+        if (!state.isDragging) return;
+        state.isDragging = false;
+        orbitSurface.classList.remove("dragging");
+        document.body.classList.remove("cursor-drag");
+      }
+
+      window.addEventListener("pointerup", endDrag);
+      window.addEventListener("pointercancel", endDrag);
+
+      /* =======================================================================
+         9. AMBIENT AUDIO ENGINE (WEBAUDIO SYNTHESIS — OFF BY DEFAULT)
+         ======================================================================= */
+      let audioCtx = null;
+      let masterGain = null;
+      const soundToggleBtn = document.getElementById("sound-toggle");
+      const soundLabelEl = document.getElementById("sound-label");
+
+      function initAmbientAudio() {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        audioCtx = new AudioContextClass();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.0001;
+        masterGain.connect(audioCtx.destination);
+
+        // Warm nocturnal low-pass filter
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 240;
+        filter.Q.value = 0.8;
+        filter.connect(masterGain);
+
+        // Slow LFO breathing on the filter cutoff
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.frequency.value = 0.07;
+        lfoGain.gain.value = 75;
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+        lfo.start();
+
+        // Warm A-minor 9th gallery chord drone (very soft, deep register)
+        const notes = [
+          { freq: 55.0, type: "sine", gain: 0.34 },
+          { freq: 82.41, type: "triangle", gain: 0.14 },
+          { freq: 110.0, type: "sine", gain: 0.18 },
+          { freq: 130.81, type: "sine", gain: 0.09 },
+          { freq: 164.81, type: "sine", gain: 0.07 },
+          { freq: 246.94, type: "sine", gain: 0.035 }
+        ];
+
+        notes.forEach((n, idx) => {
+          const osc = audioCtx.createOscillator();
+          const oscGain = audioCtx.createGain();
+          osc.type = n.type;
+          osc.frequency.value = n.freq + (idx % 2 === 0 ? 0.14 : -0.14);
+          oscGain.gain.value = n.gain;
+          osc.connect(oscGain);
+          oscGain.connect(filter);
+          osc.start();
+        });
+
+        // Subtle pink-like room air noise
+        const bufferSize = audioCtx.sampleRate * 2;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.997 * b0 + white * 0.029;
+          b1 = 0.985 * b1 + white * 0.032;
+          b2 = 0.950 * b2 + white * 0.048;
+          data[i] = (b0 + b1 + b2) * 0.12;
+        }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = "bandpass";
+        noiseFilter.frequency.value = 340;
+        noiseFilter.Q.value = 0.6;
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.value = 0.08;
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(masterGain);
+        noise.start();
+      }
+
+      soundToggleBtn.addEventListener("click", () => {
+        if (!audioCtx) initAmbientAudio();
+        if (!audioCtx) return;
+
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+
+        state.soundOn = !state.soundOn;
+        soundToggleBtn.setAttribute("aria-pressed", String(state.soundOn));
+        soundLabelEl.textContent = state.soundOn ? "صدا روشن" : "صدا خاموش";
+
+        const now = audioCtx.currentTime;
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+        masterGain.gain.linearRampToValueAtTime(state.soundOn ? 0.065 : 0.0001, now + 0.9);
+      });
+
+      /* =======================================================================
+         10. UI MICRO-INTERACTIONS, SCROLL SYNC, FILM GRAIN & LOADER
+         ======================================================================= */
+      // Hero Word-by-Word Split (preserves Persian cursive ligature connections)
+      const heroTitleEl = document.getElementById("hero-title");
+      const heroRawText = heroTitleEl.textContent.trim();
+      heroTitleEl.textContent = "";
+      let wordIdx = 0;
+      const words = heroRawText.split(/\s+/);
+      words.forEach((w, idx) => {
+        const span = document.createElement("span");
+        span.className = "char word";
+        span.textContent = w;
+        span.style.setProperty("--i", String(wordIdx++));
+        heroTitleEl.appendChild(span);
+        if (idx < words.length - 1) {
+          const space = document.createElement("span");
+          space.className = "space";
+          space.innerHTML = "&nbsp;";
+          heroTitleEl.appendChild(space);
+        }
+      });
+
+      // Procedural Film Grain Canvas Tile
+      (function initFilmGrain() {
+        const grainEl = document.getElementById("grain-overlay");
+        const c = document.createElement("canvas");
+        c.width = 160;
+        c.height = 160;
+        const ctx = c.getContext("2d");
+        const img = ctx.createImageData(160, 160);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = Math.floor(Math.random() * 255);
+          img.data[i] = v;
+          img.data[i + 1] = v;
+          img.data[i + 2] = v;
+          img.data[i + 3] = 255;
+        }
+        ctx.putImageData(img, 0, 0);
+        grainEl.style.backgroundImage = `url(${c.toDataURL("image/png")})`;
+      })();
+
+      // Custom Cursor with Smooth Lag (Desktop Fine Pointer Only)
+      const cursorDot = document.getElementById("cursor-dot");
+      const cursorRing = document.getElementById("cursor-ring");
+      const cursorPos = { x: -100, y: -100, rx: -100, ry: -100, moved: false };
+
+      if (isFinePointer && !prefersReducedMotion) {
+        window.addEventListener("pointermove", (e) => {
+          cursorPos.x = e.clientX;
+          cursorPos.y = e.clientY;
+          if (!cursorPos.moved) {
+            cursorPos.rx = e.clientX;
+            cursorPos.ry = e.clientY;
+            cursorPos.moved = true;
+            document.body.classList.add("custom-cursor-ready");
+          }
+        });
+
+        document.addEventListener("pointerover", (e) => {
+          const interactive = e.target.closest("a, button, input, textarea, [role='radio']");
+          document.body.classList.toggle("cursor-hover", Boolean(interactive));
+        });
+      }
+
+      // Magnetic Buttons (Desktop Only)
+      if (isFinePointer && !prefersReducedMotion) {
+        document.querySelectorAll(".magnetic").forEach((btn) => {
+          btn.addEventListener("pointermove", (e) => {
+            const rect = btn.getBoundingClientRect();
+            const relX = e.clientX - rect.left - rect.width * 0.5;
+            const relY = e.clientY - rect.top - rect.height * 0.5;
+            btn.style.transform = `translate3d(${(relX * 0.14).toFixed(1)}px, ${(relY * 0.18).toFixed(1)}px, 0)`;
+          });
+          btn.addEventListener("pointerleave", () => {
+            btn.style.transform = "";
+          });
+        });
+      }
+
+      // Animated Stat Counters (Section 3: Comfort)
+      function triggerComfortCounters() {
+        if (state.statsAnimated) return;
+        state.statsAnimated = true;
+
+        const els = document.querySelectorAll("[data-counter-target]");
+        els.forEach((el) => {
+          const target = Number(el.getAttribute("data-counter-target"));
+          const suffix = el.getAttribute("data-counter-suffix") || "";
+          if (prefersReducedMotion) {
+            el.textContent = `${target}${suffix}`;
+            return;
+          }
+          const duration = 1150;
+          const start = performance.now();
+          function step(now) {
+            const p = clamp((now - start) / duration, 0, 1);
+            const val = Math.round(easeOutCubic(p) * target);
+            el.textContent = `${val}${suffix}`;
+            if (p < 1) requestAnimationFrame(step);
+          }
+          requestAnimationFrame(step);
+        });
+      }
+
+      // Smooth Anchor Scroll Links (Nav, Rail Pips, Scroll Cue)
+      const sections = Array.from(document.querySelectorAll(".story-section"));
+      const navEl = document.getElementById("top-nav");
+      const navLinks = Array.from(document.querySelectorAll(".nav-link"));
+      const railPips = Array.from(document.querySelectorAll(".rail-pip"));
+      const railCurrentEl = document.getElementById("rail-current");
+      const railLabelEl = document.getElementById("rail-label");
+      const scrollCueEl = document.getElementById("scroll-cue");
+      const orbitHintEl = document.getElementById("orbit-hint");
+      const revealBlocks = Array.from(document.querySelectorAll("[data-reveal]"));
+
+      document.querySelectorAll("[data-scroll-target]").forEach((trigger) => {
+        trigger.addEventListener("click", (e) => {
+          e.preventDefault();
+          const id = trigger.getAttribute("data-scroll-target");
+          const targetSection = document.getElementById(id);
+          if (!targetSection) return;
+          const top = targetSection.offsetTop + (id === "configure" ? 120 : 0);
+          window.scrollTo({
+            top,
+            behavior: prefersReducedMotion ? "auto" : "smooth"
+          });
+        });
+      });
+
+      function updateScrollState() {
+        const scrollTop = window.scrollY || window.pageYOffset || 0;
+        const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        state.scrollProgress = clamp(scrollTop / maxScroll, 0, 1);
+
+        navEl.classList.toggle("scrolled", scrollTop > 40);
+        scrollCueEl.classList.toggle("fade-away", scrollTop > 120);
+
+        // Determine active section by viewport midpoint
+        const mid = scrollTop + window.innerHeight * 0.48;
+        let activeIdx = 0;
+        sections.forEach((sec, idx) => {
+          if (mid >= sec.offsetTop) activeIdx = idx;
+        });
+
+        if (activeIdx !== state.activeSectionIndex) {
+          state.activeSectionIndex = activeIdx;
+          const activeSec = sections[activeIdx];
+          const secId = activeSec.id;
+
+          railCurrentEl.textContent = String(activeIdx + 1).padStart(2, "0");
+          railLabelEl.textContent = activeSec.getAttribute("data-name") || "";
+
+          railPips.forEach((pip, i) => pip.classList.toggle("active", i === activeIdx));
+          navLinks.forEach((link) => {
+            link.classList.toggle("active", link.getAttribute("data-scroll-target") === secId);
+          });
+
+          if (activeIdx === 2) triggerComfortCounters();
+        }
+
+        // Sync visibility of HTML reveal blocks
+        revealBlocks.forEach((block) => {
+          const idx = Number(block.getAttribute("data-reveal"));
+          block.classList.toggle("in-view", idx === activeIdx);
+        });
+
+        // Section 4: Details Hotspots
+        state.inDetails = activeIdx === 3;
+        hotspotsLayer.classList.toggle("visible", state.inDetails);
+
+        // Section 5: Configure Panel + Drag-to-Orbit
+        const nowConfigure = activeIdx === 4;
+        if (nowConfigure !== state.inConfigure) {
+          state.inConfigure = nowConfigure;
+          configPanelEl.classList.toggle("visible", nowConfigure);
+          orbitSurface.classList.toggle("active", nowConfigure);
+          orbitHintEl.classList.toggle("visible", nowConfigure);
+          if (!nowConfigure) {
+            endDrag();
+          }
+        }
+      }
+
+      window.addEventListener("scroll", updateScrollState, { passive: true });
+      updateScrollState();
+
+      // Loading Screen Sequence
+      (function runLoader() {
+        const loaderEl = document.getElementById("loader");
+        const barEl = document.getElementById("loader-bar");
+        const pctEl = document.getElementById("loader-percent");
+        let progress = 0;
+
+        function tick() {
+          progress = Math.min(100, progress + (progress < 70 ? 18 : 12));
+          barEl.style.width = `${progress}%`;
+          pctEl.textContent = `${Math.round(progress).toLocaleString("fa-IR")}٪`;
+
+          if (progress < 100) {
+            setTimeout(tick, prefersReducedMotion ? 10 : 65);
+          } else {
+            // Compile first WebGL frame before fading out loader
+            renderer.render(scene, camera);
+            setTimeout(() => {
+              loaderEl.classList.add("hidden");
+              document.body.classList.add("app-ready");
+            }, prefersReducedMotion ? 10 : 240);
+          }
+        }
+        tick();
+      })();
+
+      /* =======================================================================
+         11. SINGLE RENDER LOOP & RESIZE HANDLER
+         ======================================================================= */
+      const grainOverlayEl = document.getElementById("grain-overlay");
+      let lastTime = performance.now();
+      let grainTick = 0;
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+        const elapsed = now * 0.001;
+
+        // 1. Smooth-damped scroll progress (zero jitter)
+        state.smoothProgress = prefersReducedMotion
+          ? state.scrollProgress
+          : damp(state.smoothProgress, state.scrollProgress, 5.2, dt);
+
+        // 2. Smooth mouse parallax (active subtly in Hero)
+        state.smoothMouseX = damp(state.smoothMouseX, state.mouseX, 4.5, dt);
+        state.smoothMouseY = damp(state.smoothMouseY, state.mouseY, 4.5, dt);
+        const heroWeight = clamp(1 - state.smoothProgress / 0.16, 0, 1);
+
+        // 3. Sample scroll keyframes
+        const frame = sampleTimeline(state.smoothProgress);
+
+        // 4. Configure-only orbit drag damping (gently returns to 0 outside Configure)
+        if (!state.inConfigure) {
+          state.orbitYawTarget = damp(state.orbitYawTarget, 0, 3.0, dt);
+          state.orbitPitchTarget = damp(state.orbitPitchTarget, 0, 3.0, dt);
+        }
+        state.orbitYawCurrent = damp(state.orbitYawCurrent, state.orbitYawTarget, 7.5, dt);
+        state.orbitPitchCurrent = damp(state.orbitPitchCurrent, state.orbitPitchTarget, 7.5, dt);
+
+        // 5. Apply Hero parallax + Configure pitch offset to camera target
+        const parallaxX = prefersReducedMotion ? 0 : state.smoothMouseX * 0.32 * heroWeight;
+        const parallaxY = prefersReducedMotion ? 0 : -state.smoothMouseY * 0.18 * heroWeight;
+
+        const desiredCamX = camTargetPos.x + parallaxX;
+        const desiredCamY = camTargetPos.y + parallaxY + state.orbitPitchCurrent * 1.35;
+        const desiredCamZ = camTargetPos.z;
+
+        const camLambda = prefersReducedMotion ? 60 : 6.2;
+        camCurrentPos.x = damp(camCurrentPos.x, desiredCamX, camLambda, dt);
+        camCurrentPos.y = damp(camCurrentPos.y, desiredCamY, camLambda, dt);
+        camCurrentPos.z = damp(camCurrentPos.z, desiredCamZ, camLambda, dt);
+
+        camCurrentLook.x = damp(camCurrentLook.x, camTargetLook.x, camLambda, dt);
+        camCurrentLook.y = damp(camCurrentLook.y, camTargetLook.y, camLambda, dt);
+        camCurrentLook.z = damp(camCurrentLook.z, camTargetLook.z, camLambda, dt);
+
+        camera.position.copy(camCurrentPos);
+        camera.lookAt(camCurrentLook);
+
+        // 6. Sofa rotation (scroll yaw + configure drag orbit + gentle hero breathing)
+        const heroIdleYaw = prefersReducedMotion ? 0 : Math.sin(elapsed * 0.25) * 0.06 * heroWeight;
+        sofaPivot.rotation.y = frame.sofaYaw + state.orbitYawCurrent + heroIdleYaw;
+
+        // 7. Slow rotating overhead spotlight reveal in Hero
+        const spotSwing = prefersReducedMotion ? 0 : Math.sin(elapsed * 0.42) * 0.95 * heroWeight;
+        const spotZSwing = prefersReducedMotion ? 0 : Math.cos(elapsed * 0.34) * 0.45 * heroWeight;
+        spotLight.position.set(0.35 + spotSwing, 5.4, 1.05 + spotZSwing);
+        spotLight.intensity = damp(spotLight.intensity, frame.spotIntensity, 4.0, dt);
+        spotLight.angle = damp(spotLight.angle, frame.spotAngle, 4.0, dt);
+
+        // Aim volumetric light cone from spotlight to target
+        volumetricCone.position.copy(spotLight.position);
+        volumetricCone.lookAt(spotLight.target.position);
+        volumetricCone.rotateX(Math.PI * 0.5);
+        volumetricMat.uniforms.uTime.value = elapsed;
+        volumetricMat.uniforms.uOpacity.value = 0.085 + 0.035 * heroWeight;
+
+        // 8. Float dust particles slowly in the spotlight beam
+        if (!prefersReducedMotion) {
+          const pAttr = particleGeo.attributes.position;
+          for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const phase = particleSeeds[i * 3];
+            const speed = particleSeeds[i * 3 + 1];
+            const drift = particleSeeds[i * 3 + 2];
+
+            let y = pAttr.getY(i) + speed * dt;
+            if (y > 4.85) y = 0.14;
+
+            const x = pAttr.getX(i) + Math.sin(elapsed * 0.4 + phase) * 0.0009 * drift;
+            const z = pAttr.getZ(i) + Math.cos(elapsed * 0.35 + phase) * 0.0009 * drift;
+            pAttr.setXYZ(i, x, y, z);
+          }
+          pAttr.needsUpdate = true;
+        }
+
+        // 9. Smooth Material Color & Roughness Tween (~600ms)
+        if (materialTween.active) {
+          materialTween.t = Math.min(1, materialTween.t + dt / materialTween.duration);
+          applyMaterialTween(easeOutCubic(materialTween.t));
+          if (materialTween.t >= 1) materialTween.active = false;
+        }
+
+        if (legTween.active) {
+          legTween.t = Math.min(1, legTween.t + dt / legTween.duration);
+          applyLegTween(easeOutCubic(legTween.t));
+          if (legTween.t >= 1) legTween.active = false;
+        }
+
+        // 10. Animated Size Rebuild Scale Transition
+        if (sizeAnim.active) {
+          if (sizeAnim.phase === "out") {
+            sizeAnim.t = Math.min(1, sizeAnim.t + dt / 0.22);
+            const s = lerp(1, 0.86, easeOutCubic(sizeAnim.t));
+            sofaContainer.scale.set(s, lerp(1, 0.94, sizeAnim.t), s);
+            reflectionContainer.scale.set(s, -lerp(1, 0.94, sizeAnim.t), s);
+            if (sizeAnim.t >= 1) {
+              buildSofaGeometry(sizeAnim.pendingSizeId);
+              sizeAnim.phase = "in";
+              sizeAnim.t = 0;
+            }
+          } else if (sizeAnim.phase === "in") {
+            sizeAnim.t = Math.min(1, sizeAnim.t + dt / 0.42);
+            const e = easeOutCubic(sizeAnim.t);
+            const s = lerp(0.86, 1, e);
+            const sy = lerp(0.94, 1, e);
+            sofaContainer.scale.set(s, sy, s);
+            reflectionContainer.scale.set(s, -sy, s);
+            if (sizeAnim.t >= 1) {
+              sofaContainer.scale.set(1, 1, 1);
+              reflectionContainer.scale.set(1, -1, 1);
+              sizeAnim.active = false;
+              sizeAnim.phase = "idle";
+            }
+          }
+        }
+
+        // 11. Animated Live Price Counter
+        if (Math.abs(state.displayedPrice - state.targetPrice) > 0.5) {
+          state.displayedPrice = damp(state.displayedPrice, state.targetPrice, 10, dt);
+          if (Math.abs(state.displayedPrice - state.targetPrice) < 1) {
+            state.displayedPrice = state.targetPrice;
+          }
+          livePriceEl.textContent = formatUSD(state.displayedPrice);
+        }
+
+        // 12. Update 3D Hotspots Projection (Section 4)
+        updateHotspotPositions();
+
+        // 13. Custom Cursor Lag Follow
+        if (cursorPos.moved && !prefersReducedMotion) {
+          cursorPos.rx = damp(cursorPos.rx, cursorPos.x, 12, dt);
+          cursorPos.ry = damp(cursorPos.ry, cursorPos.y, 12, dt);
+          cursorDot.style.transform = `translate3d(${cursorPos.x}px, ${cursorPos.y}px, 0)`;
+          cursorRing.style.transform = `translate3d(${cursorPos.rx.toFixed(1)}px, ${cursorPos.ry.toFixed(1)}px, 0)`;
+        }
+
+        // 14. Subtle Cinematic Film Grain Shift (every ~3rd frame)
+        if (!prefersReducedMotion) {
+          grainTick++;
+          if (grainTick % 4 === 0) {
+            const gx = ((grainTick * 17) % 40) - 20;
+            const gy = ((grainTick * 29) % 40) - 20;
+            grainOverlayEl.style.transform = `translate3d(${gx}px, ${gy}px, 0)`;
+          }
+        }
+
+        // 15. Render Scene
+        renderer.render(scene, camera);
+      }
+
+      requestAnimationFrame(animate);
+
+      // Responsive Resize Handling
+      window.addEventListener("resize", () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.fov = w <= 640 ? 44 : 38;
+        camera.updateProjectionMatrix();
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(w, h);
+        keyframes = getKeyframes();
+        updateScrollState();
+      });
+    })();
+  </script>
+</body>
+</html>
